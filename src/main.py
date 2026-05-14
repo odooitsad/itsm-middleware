@@ -1,4 +1,3 @@
-import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -7,19 +6,15 @@ from fastapi import FastAPI
 from src.api.routers import health
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
+from src.core.logger import get_logger
 
-logging.basicConfig(level=logging.INFO)
-logging.getLogger(__name__).setLevel(logging.DEBUG)
-
+logger = get_logger(__name__)
 settings = get_settings()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    from logging import getLogger
     from pathlib import Path
-
-    logger = getLogger(__name__)
 
     logger.debug("Debug mode")
     str_path = str(settings.model_config.get("env_file"))
