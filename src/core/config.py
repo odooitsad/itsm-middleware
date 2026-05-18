@@ -41,6 +41,15 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     TZ: str = "UTC"
 
+    # BMC Helix
+    BMC_HELIX_BASE_URL: str = ""
+    BMC_HELIX_USERNAME: str = ""
+    BMC_HELIX_PASSWORD: str = ""
+    BMC_HELIX_LOGIN_PATH: str = "/api/jwt/login"
+    BMC_HELIX_TOKEN_FIELD: str = "token"
+    BMC_HELIX_TOKEN_TTL_SECONDS: float = 3600.0
+    BMC_HELIX_TIMEOUT: float = 30.0
+
 
 @lru_cache
 def get_settings() -> Settings:
