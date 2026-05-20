@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     )
 
     LOG_FILE_PATH: Path = ROOT_DIR / "logs" / "itsm_middleware.log"
+    API_KEY: str
     DEBUG: bool = False
     TZ: str = "UTC"
 

@@ -1,12 +1,13 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 
-from src.api.routers import health
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
 from src.core.logger import get_logger
+from src.health_router import router as health_router
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -14,12 +15,9 @@ settings = get_settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    from pathlib import Path
-
-    logger.debug("Debug mode")
     str_path = str(settings.model_config.get("env_file"))
-    env_file_path = Path(str_path)
-    logger.info(f"Loading settings from: {env_file_path.name}")
+    logger.info(f"Loading settings from: {Path(str_path).name}")
+
     yield
 
 
@@ -31,4 +29,4 @@ app = FastAPI(
 )
 
 
-app.include_router(health.router)
+app.include_router(health_router)
