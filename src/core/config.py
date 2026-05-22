@@ -24,6 +24,30 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     TZ: str = "UTC"
 
+    db_driver: DBDriver
+    db_host: str
+    db_port: int
+    db_user: str
+    db_password: str
+    db_name: str
+
+    db_pool_size: int = 5
+    db_max_overflow: int = 5  # additional connections beyond pool_size
+    db_pool_timeout: int = 30
+    db_pool_recycle: int = 3600
+
+    @property
+    def database_url(self) -> str:
+        """
+        Builds the database connection URL based on the configured driver and credentials.
+        """
+        uri = f"{self.db_user}:{self.db_password}@{self.db_host}:{self.db_port}/{self.db_name}"
+        drivers = {
+            DBDriver.AIOMYSQL: "mysql+aiomysql",
+            DBDriver.ASYNCPG: "postgresql+asyncpg",
+        }
+        return drivers[self.db_driver] + "://" + uri
+
     bmc_helix: BMCHelixSettings = Field(default_factory=BMCHelixSettings)  # type: ignore[call-arg]
 
 

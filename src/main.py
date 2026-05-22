@@ -8,6 +8,7 @@ from src.bmc_helix.api.router import router as bmc_helix_router
 from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
+from src.core.database.session import DatabaseAdapter
 from src.core.logger import get_logger
 from src.health_router import router as health_router
 
@@ -24,13 +25,27 @@ async def init_bmc_helix_adapter() -> BmcHelixAdapter:
     )
 
 
+async def build_db_adapter() -> DatabaseAdapter:
+    return DatabaseAdapter(
+        db_url=settings.database_url,
+        echo=settings.DEBUG,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_timeout=settings.db_pool_timeout,
+        pool_recycle=settings.db_pool_recycle,
+    )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     str_path = str(settings.model_config.get("env_file"))
     logger.info(f"Loading settings from: {Path(str_path).name}")
 
+    db = await build_db_adapter()
     bmc_helix = None
     try:
+        await db.connect()
+        app.state.db = db
         logger.info("Database connection pool established")
 
         bmc_helix = await init_bmc_helix_adapter()
@@ -42,6 +57,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.exception(f"Error during application startup: {e}")
         raise
     finally:
+        await db.disconnect()
+        logger.info("Database connection pool closed")
+
         if bmc_helix:
             await bmc_helix.stop()
             logger.info("BMC Helix adapter stopped")
