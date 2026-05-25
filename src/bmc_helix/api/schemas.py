@@ -1,62 +1,105 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+from src.bmc_helix.domain.entities import CreateIncidentInput
 
 
 class CreateIncidentRequest(BaseModel):
-    first_name: str = Field("Integracion", serialization_alias="First_Name")
-    last_name: str = Field("Datasmart", serialization_alias="Last_Name")
-    company: str = Field("CENIT", serialization_alias="Company")
-    direct_contact_first_name: str = Field(
-        "Integracion", serialization_alias="Direct Contact First Name"
-    )
-    direct_contact_last_name: str = Field(
-        "Datasmart", serialization_alias="Direct Contact Last Name"
-    )
     description: str = Field(
-        "PR_Indisponibilidad_OBC_LAN_SW_(equipo y estación)",
         serialization_alias="Description",
+        examples=["PR_Indisponibilidad_OBC_LAN_SW_(equipo y estación)"],
     )
     detailed_description: str = Field(
-        "PR_Indisponibilidad_OBC_LAN_SW_(equipo y estación)",
         serialization_alias="Detailed_Decription",
+        examples=["PR_Indisponibilidad_OBC_LAN_SW_(equipo y estación)"],
     )
-    status: str = Field("Assigned", serialization_alias="Status")
-    impact: str = Field("4-Minor/Localized", serialization_alias="Impact")
-    urgency: str = Field("4-Low", serialization_alias="Urgency")
+    impact: Literal[
+        "1-Extensive/Widespread",
+        "2-Significant/Large",
+        "3-Moderate/Limited",
+        "4-Minor/Localized",
+    ] = Field(
+        serialization_alias="Impact",
+        examples=["4-Minor/Localized"],
+    )
+    urgency: Literal[
+        "1-Critical",
+        "2-High",
+        "3-Medium",
+        "4-Low",
+    ] = Field(
+        serialization_alias="Urgency",
+        examples=["4-Low"],
+    )
     service_type: str = Field(
-        "User Service Request", serialization_alias="Service_Type"
+        serialization_alias="Service_Type",
+        examples=["User Service Request"],
     )
-    reported_source: str = Field("Self Service", serialization_alias="Reported Source")
     categorization_tier_1: str = Field(
-        "Redes y telecomunicaciones", serialization_alias="Categorization Tier 1"
+        serialization_alias="Categorization Tier 1",
+        examples=["Redes y telecomunicaciones"],
     )
     categorization_tier_2: str = Field(
-        "Lan", serialization_alias="Categorization Tier 2"
+        serialization_alias="Categorization Tier 2",
+        examples=["Lan"],
     )
     categorization_tier_3: str = Field(
-        "Disponibilidad", serialization_alias="Categorization Tier 3"
+        serialization_alias="Categorization Tier 3",
+        examples=["Disponibilidad"],
     )
     product_categorization_tier_1: str = Field(
-        "Redes y telecomunicaciones",
         serialization_alias="Product Categorization Tier 1",
+        examples=["Redes y telecomunicaciones"],
     )
     product_categorization_tier_2: str = Field(
-        "Lan", serialization_alias="Product Categorization Tier 2"
+        serialization_alias="Product Categorization Tier 2",
+        examples=["Lan"],
     )
     product_categorization_tier_3: str = Field(
-        "Switch", serialization_alias="Product Categorization Tier 3"
+        serialization_alias="Product Categorization Tier 3",
+        examples=["Switch"],
     )
-    manufacturer: str = Field("CENIT", serialization_alias="Manufacturer")
+    manufacturer: str = Field(
+        serialization_alias="Manufacturer",
+        examples=["CENIT"],
+    )
     assigned_support_company: str = Field(
-        "CENIT", serialization_alias="Assigned Support Company"
+        serialization_alias="Assigned Support Company",
+        examples=["CENIT"],
     )
     assigned_support_organization: str = Field(
-        "Soporte Tecnico", serialization_alias="Assigned Support Organization"
+        serialization_alias="Assigned Support Organization",
+        examples=["Soporte Tecnico"],
     )
-    assigned_group: str = Field("Sop_Telco", serialization_alias="Assigned Group")
+    assigned_group: str = Field(
+        serialization_alias="Assigned Group",
+        examples=["Sop_Telco"],
+    )
     assignee: str = Field(
-        "Jesus Alberto de La Hoz Jimenez", serialization_alias="Assignee"
+        serialization_alias="Assignee",
+        examples=["Jesus Alberto de La Hoz Jimenez"],
     )
-    action: str = Field("CREATE", serialization_alias="z1D_Action")
+
+    def to_input(self) -> CreateIncidentInput:
+        return CreateIncidentInput(
+            description=self.description,
+            detailed_description=self.detailed_description,
+            impact=self.impact,
+            urgency=self.urgency,
+            service_type=self.service_type,
+            categorization_tier_1=self.categorization_tier_1,
+            categorization_tier_2=self.categorization_tier_2,
+            categorization_tier_3=self.categorization_tier_3,
+            product_categorization_tier_1=self.product_categorization_tier_1,
+            product_categorization_tier_2=self.product_categorization_tier_2,
+            product_categorization_tier_3=self.product_categorization_tier_3,
+            manufacturer=self.manufacturer,
+            assigned_support_company=self.assigned_support_company,
+            assigned_support_organization=self.assigned_support_organization,
+            assigned_group=self.assigned_group,
+            assignee=self.assignee,
+        )
 
 
 class CreateIncidentResponse(BaseModel):

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
-from src.bmc_helix.api.router import router as bmc_helix_router
+from src.bmc_helix.api.routers.main import bmc_helix_router
 from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
