@@ -63,6 +63,9 @@ class BmcHelixAdapter(BmcHelixPort):
         token = response.text.strip()
         return token
 
+    def build_request_payload(self, payload: CreateIncidentInput) -> dict:
+        return _to_bmc_payload(payload)
+
     async def create_incident(self, payload: CreateIncidentInput) -> IncidentResponse:
         """Create an incident in BMC Helix and return the created entry."""
         token = await self.fetch_token()
