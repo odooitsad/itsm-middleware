@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from src.bmc_helix.api.dependencies import CreateIncidentDep, GetIncidentDep
+from src.bmc_helix.api.dependencies import BmcHelixAdapterDep, CreateIncidentDep
 from src.bmc_helix.api.schemas import (
     CreateIncidentRequest,
     CreateIncidentResponse,
@@ -19,6 +19,6 @@ async def create_incident(
 
 
 @router.get("/{incident_id}", response_model=IncidentInfoResponse)
-async def get_incident(incident_id: str, get_incident: GetIncidentDep):
-    incident = await get_incident.execute(incident_id)
+async def get_incident(incident_id: str, adapter: BmcHelixAdapterDep):
+    incident = await adapter.get_incident(incident_id)
     return incident
