@@ -1,0 +1,17 @@
+services:
+  itsm-middleware:
+    build:
+      context: .
+      args:
+        - POETRY_ARGS=--only main --no-root
+      dockerfile: ./compose/Dockerfile
+    image: "itsm_middleware:v1${CLIENT_NAME}"
+    container_name: itsm-middleware
+    volumes:
+      - ./logs:/app/logs
+    ports:
+      - "${DOCKER_BACKEND_PORT}:${BACKEND_PORT}"
+    env_file:
+      - ./.env
+    environment:
+      - ENV_FILE=${ENV_FILE:-.env}

@@ -1,0 +1,16 @@
+services:
+  itsm-middleware:
+    build:
+      context: .
+      dockerfile: ./compose/Dockerfile
+    image: 'itsm-middleware:v1-local'
+    container_name: itsm-middleware-app
+    volumes:
+      - ./src:/app/src
+      - ./logs:/app/logs
+    ports:
+      - "${DOCKER_BACKEND_PORT}:${BACKEND_PORT}"
+    env_file:
+      - ${ENV_FILE:-.env}
+    environment:
+      - ENV_FILE=${ENV_FILE:-.env}
