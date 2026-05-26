@@ -24,25 +24,46 @@ class Transaction:
 
 @dataclass
 class CreateIncidentInput:
-    description: str
-    detailed_description: str
-    impact: str
-    urgency: str
-    service_type: str
+    assigned_group: str
+    assigned_support_company: str
+    assigned_support_organization: str
+    assignee: str
     categorization_tier_1: str
     categorization_tier_2: str
     categorization_tier_3: str
+    description: str
+    detailed_description: str
+    impact: str
+    manufacturer: str
     product_categorization_tier_1: str
     product_categorization_tier_2: str
     product_categorization_tier_3: str
-    manufacturer: str
-    assigned_support_company: str
-    assigned_support_organization: str
-    assigned_group: str
-    assignee: str
+    service_type: str
+    urgency: str
 
 
 @dataclass
 class IncidentResponse:
     incident_number: str
     request_id: str
+
+
+@dataclass
+class IncidentInfo:
+    assigned_group: str
+    assignee: str
+    categorization_tier_1: str
+    categorization_tier_2: str
+    categorization_tier_3: str
+    description: str
+    detailed_description: str
+    incident_number: str
+    impact: str
+    priority: str
+    product_categorization_tier_1: str
+    product_categorization_tier_2: str
+    product_categorization_tier_3: str
+    product_name: str
+    status: str
+    submit_date: str
+    urgency: str

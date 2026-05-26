@@ -2,6 +2,7 @@ import dataclasses
 
 from src.bmc_helix.domain.entities import (
     CreateIncidentInput,
+    IncidentInfo,
     IncidentResponse,
     Transaction,
     TransactionStatus,
@@ -46,3 +47,11 @@ class CreateIncidentUseCase:
         transaction.response = dataclasses.asdict(response)
         await self._repository.update(transaction)
         return response
+
+
+class GetIncidentUseCase:
+    def __init__(self, adapter: BmcHelixPort) -> None:
+        self._adapter = adapter
+
+    async def execute(self, incident_number: str) -> IncidentInfo:
+        return await self._adapter.get_incident(incident_number)

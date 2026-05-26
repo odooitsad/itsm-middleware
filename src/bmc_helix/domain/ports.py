@@ -1,6 +1,10 @@
 from typing import Protocol
 
-from src.bmc_helix.domain.entities import CreateIncidentInput, IncidentResponse
+from src.bmc_helix.domain.entities import (
+    CreateIncidentInput,
+    IncidentInfo,
+    IncidentResponse,
+)
 
 
 class BmcHelixPort(Protocol):
@@ -10,3 +14,4 @@ class BmcHelixPort(Protocol):
     async def create_incident(
         self, payload: CreateIncidentInput
     ) -> IncidentResponse: ...
+    async def get_incident(self, incident_number: str) -> IncidentInfo: ...

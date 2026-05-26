@@ -4,7 +4,10 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.bmc_helix.application.use_cases import CreateIncidentUseCase
+from src.bmc_helix.application.use_cases import (
+    CreateIncidentUseCase,
+    GetIncidentUseCase,
+)
 from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 from src.bmc_helix.infrastructure.repositories import TransactionRepository
 from src.core.database.session import DatabaseAdapter
@@ -39,3 +42,11 @@ def get_create_incident_use_case(
 CreateIncidentDep = Annotated[
     CreateIncidentUseCase, Depends(get_create_incident_use_case)
 ]
+
+
+def get_get_incident_use_case(request: Request) -> GetIncidentUseCase:
+    adapter: BmcHelixAdapter = request.app.state.bmc_helix
+    return GetIncidentUseCase(adapter)
+
+
+GetIncidentDep = Annotated[GetIncidentUseCase, Depends(get_get_incident_use_case)]
