@@ -4,7 +4,12 @@ from pathlib import Path
 
 from fastapi import FastAPI
 
+from src.bmc_helix.api.exception_handlers import (
+    incident_creation_error_handler,
+    incident_not_found_error_handler,
+)
 from src.bmc_helix.api.routers.main import bmc_helix_router
+from src.bmc_helix.domain.exceptions import IncidentCreationError, IncidentNotFoundError
 from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
@@ -75,3 +80,6 @@ app = FastAPI(
 
 app.include_router(health_router)
 app.include_router(bmc_helix_router)
+
+app.add_exception_handler(IncidentCreationError, incident_creation_error_handler)
+app.add_exception_handler(IncidentNotFoundError, incident_not_found_error_handler)
