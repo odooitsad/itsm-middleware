@@ -67,3 +67,13 @@ class IncidentInfo:
     status: str
     submit_date: str
     urgency: str
+
+
+@dataclass
+class BmcHelixError:
+    """Represents a single error object returned by the BMC Helix REST API."""
+
+    message_type: str
+    message_text: str
+    message_number: int
+    message_appended_text: str

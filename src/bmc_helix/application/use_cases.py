@@ -33,14 +33,13 @@ class CreateIncidentUseCase:
                 request=self._adapter.build_request_payload(payload),
             )
         )
-
         try:
             response = await self._adapter.create_incident(payload)
-        except Exception as exc:
+        except IncidentCreationError as exc:
             transaction.status = TransactionStatus.ERROR
             transaction.response = {"error": str(exc)}
             await self._repository.update(transaction)
-            raise IncidentCreationError(str(exc)) from exc
+            raise
 
         transaction.status = TransactionStatus.SUCCESS
         transaction.incident_id = response.incident_number

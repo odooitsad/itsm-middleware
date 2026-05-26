@@ -1,14 +1,40 @@
+import httpx
+
 from src.bmc_helix.domain.entities import (
+    BmcHelixError,
     CreateIncidentInput,
     IncidentInfo,
     IncidentResponse,
 )
-from src.bmc_helix.domain.exceptions import IncidentNotFoundError
+from src.bmc_helix.domain.exceptions import (
+    BmcHelixClientError,
+    IncidentCreationError,
+)
 from src.bmc_helix.domain.ports import BmcHelixPort
 from src.core.clients.httpx import HttpxClient
 from src.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _parse_bmc_errors(response: httpx.Response) -> list[BmcHelixError]:
+    """Parse the BMC Helix error list from a 4xx/5xx response body."""
+    try:
+        data = response.json()
+        if isinstance(data, list):
+            return [
+                BmcHelixError(
+                    message_type=item.get("messageType", ""),
+                    message_text=item.get("messageText", ""),
+                    message_number=item.get("messageNumber", 0),
+                    message_appended_text=item.get("messageAppendedText", ""),
+                )
+                for item in data
+            ]
+    except Exception:
+        logger.warning("Failed to parse BMC Helix error response: %s", response.text)
+    return []
+
 
 _INCIDENT_FIELDS = (
     "Incident Number,Status,Submit Date,Priority,Impact,Urgency,"
@@ -84,12 +110,19 @@ class BmcHelixAdapter(BmcHelixPort):
         token = await self.fetch_token()
         params = {"fields": "values(Incident Number,Request ID)"}
         bmc_payload = {"values": _to_bmc_payload(payload)}
-        response = await self._client.post(
-            "/arsys/v1/entry/HPD:IncidentInterface_Create",
-            headers={"Authorization": f"AR-JWT{token}"},
-            json=bmc_payload,
-            params=params,
-        )
+        try:
+            response = await self._client.post(
+                "/arsys/v1/entry/HPD:IncidentInterface_Create",
+                headers={"Authorization": f"AR-JWT{token}"},
+                json=bmc_payload,
+                params=params,
+            )
+        except httpx.HTTPStatusError as exc:
+            bmc_errors = _parse_bmc_errors(exc.response)
+            raise IncidentCreationError(
+                f"BMC Helix returned {exc.response.status_code} while creating the incident.",
+                bmc_errors=bmc_errors,
+            ) from exc
         data = response.json()
         values = data["values"]
         logger.debug(f"Create incident response data: {data}")
@@ -103,18 +136,27 @@ class BmcHelixAdapter(BmcHelixPort):
         """Query a single incident from BMC Helix by its incident number."""
         token = await self.fetch_token()
         params = {"fields": f"values({_INCIDENT_FIELDS})"}
-        response = await self._client.get(
-            f"/arsys/v1/entry/HPD:Help Desk/{incident_number}",
-            headers={"Authorization": f"AR-JWT{token}"},
-            params=params,
-        )
+        try:
+            response = await self._client.get(
+                f"/arsys/v1/entry/HPD:Help Desk/{incident_number}",
+                headers={"Authorization": f"AR-JWT{token}"},
+                params=params,
+            )
+        except httpx.HTTPStatusError as exc:
+            bmc_errors = _parse_bmc_errors(exc.response)
+            raise BmcHelixClientError(
+                f"BMC Helix returned {exc.response.status_code} for incident '{incident_number}'.",
+                status_code=exc.response.status_code,
+                bmc_errors=bmc_errors,
+            ) from exc
         data = response.json()
         logger.debug(f"Get incident response data: {data}")
 
         values = data.get("values", {})
         if not values:
-            raise IncidentNotFoundError(
-                f"Incident '{incident_number}' not found in BMC Helix."
+            raise BmcHelixClientError(
+                f"Incident '{incident_number}' not found in BMC Helix.",
+                status_code=404,
             )
 
         return IncidentInfo(
