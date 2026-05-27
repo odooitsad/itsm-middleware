@@ -13,6 +13,7 @@ from src.bmc_helix.domain.exceptions import BmcHelixClientError, IncidentCreatio
 from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
+from src.core.database.base import Base
 from src.core.database.session import DatabaseAdapter
 from src.core.logger import get_logger
 from src.health_router import router as health_router
@@ -52,6 +53,10 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await db.connect()
         app.state.db = db
         logger.info("Database connection pool established")
+
+        async with db.engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables ensured (bmc_helix)")
 
         bmc_helix = await init_bmc_helix_adapter()
         app.state.bmc_helix = bmc_helix
