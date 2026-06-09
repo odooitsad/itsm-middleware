@@ -110,6 +110,7 @@ class BmcHelixAdapter(BmcHelixPort):
         token = await self.fetch_token()
         params = {"fields": "values(Incident Number,Request ID)"}
         bmc_payload = {"values": _to_bmc_payload(payload)}
+        logger.info(f"Creating incident in BMC Helix - payload: {bmc_payload}")
         try:
             response = await self._client.post(
                 "/arsys/v1/entry/HPD:IncidentInterface_Create",
@@ -126,19 +127,24 @@ class BmcHelixAdapter(BmcHelixPort):
         data = response.json()
         values = data["values"]
         logger.debug(f"Create incident response data: {data}")
+        incident_id = values.get("Incident Number", "")
+        logger.info(f"Incident ID created: {incident_id}")
 
         return IncidentResponse(
-            incident_number=values.get("Incident Number", ""),
+            incident_number=incident_id,
             request_id=values.get("Request ID", ""),
         )
 
     async def get_incident(self, incident_number: str) -> IncidentInfo:
         """Query a single incident from BMC Helix by its incident number."""
         token = await self.fetch_token()
-        params = {"fields": f"values({_INCIDENT_FIELDS})"}
+        params = {
+            "q": f"'Incident Number'=\"{incident_number}\"",
+            "fields": f"values({_INCIDENT_FIELDS})",
+        }
         try:
             response = await self._client.get(
-                f"/arsys/v1/entry/HPD:Help Desk/{incident_number}",
+                "/arsys/v1/entry/HPD:Help Desk/",
                 headers={"Authorization": f"AR-JWT{token}"},
                 params=params,
             )
@@ -150,9 +156,15 @@ class BmcHelixAdapter(BmcHelixPort):
                 bmc_errors=bmc_errors,
             ) from exc
         data = response.json()
+        entries = data.get("entries", [])
+        if not entries:
+            raise BmcHelixClientError(
+                f"Incident '{incident_number}' not found in BMC Helix.",
+                status_code=404,
+            )
+        values = entries[0].get("values", {})
         logger.debug(f"Get incident response data: {data}")
 
-        values = data.get("values", {})
         if not values:
             raise BmcHelixClientError(
                 f"Incident '{incident_number}' not found in BMC Helix.",

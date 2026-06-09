@@ -13,7 +13,7 @@ class ZabbixEventUrgency(str, Enum):
 class ZabbixBase(BaseModel):
     description: str = Field(
         examples=["Pruebas DEV"],
-        max_length=100,
+        max_length=10000,
     )
     end_date: str | None = Field(
         None,
