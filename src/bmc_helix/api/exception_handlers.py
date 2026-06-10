@@ -1,7 +1,31 @@
-from fastapi import Request
+from fastapi import Request, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from pydantic import ValidationError
 
 from src.bmc_helix.domain.exceptions import BmcHelixClientError, IncidentCreationError
+
+
+async def validation_exception_handler(_: Request, exc: Exception) -> JSONResponse:
+    """
+    Custom handler for Pydantic validation errors and FastAPI request validation errors.
+    Returns user-friendly error messages.
+    """
+    assert isinstance(exc, (ValidationError, RequestValidationError))
+    errors = []
+    for error in exc.errors():
+        errors.append(
+            {
+                "field": ".".join(str(loc) for loc in error["loc"]),
+                "message": error["msg"],
+                "type": error["type"],
+            }
+        )
+
+    return JSONResponse(
+        status_code=status.HTTP_400_BAD_REQUEST,
+        content={"detail": "Validation error", "errors": errors},
+    )
 
 
 def _bmc_errors_payload(exc: IncidentCreationError | BmcHelixClientError) -> list[dict]:
@@ -19,9 +43,7 @@ def _bmc_errors_payload(exc: IncidentCreationError | BmcHelixClientError) -> lis
 async def incident_creation_error_handler(_: Request, exc: Exception) -> JSONResponse:
     assert isinstance(exc, IncidentCreationError)
     content: dict = {"detail": str(exc)}
-    print(f"BMC Errors{exc.bmc_errors}")
     if exc.bmc_errors:
-        print("Adding BMC errors to response")
         content["bmc_errors"] = _bmc_errors_payload(exc)
     return JSONResponse(status_code=502, content=content)
 

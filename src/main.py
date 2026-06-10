@@ -3,10 +3,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
 
 from src.bmc_helix.api.exception_handlers import (
     bmc_helix_client_error_handler,
     incident_creation_error_handler,
+    validation_exception_handler,
 )
 from src.bmc_helix.api.routers.main import bmc_helix_router
 from src.bmc_helix.domain.exceptions import BmcHelixClientError, IncidentCreationError
@@ -86,5 +89,8 @@ app = FastAPI(
 app.include_router(health_router)
 app.include_router(bmc_helix_router)
 
+
+app.add_exception_handler(ValidationError, validation_exception_handler)
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(IncidentCreationError, incident_creation_error_handler)
 app.add_exception_handler(BmcHelixClientError, bmc_helix_client_error_handler)
