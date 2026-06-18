@@ -1,3 +1,6 @@
+import asyncio
+from collections.abc import AsyncGenerator
+
 import httpx
 
 from src.bmc_helix.domain.entities import (
@@ -15,6 +18,70 @@ from src.core.clients.httpx import HttpxClient
 from src.core.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+class BmcHelixAuth(httpx.Auth):
+    """
+    httpx.Auth implementation for BMC Helix JWT authentication.
+
+    Fetches a JWT from /jwt/login using form-encoded credentials, caches it,
+    and auto-refreshes transparently on 401 responses (one retry per request).
+    """
+
+    def __init__(self, base_url: str, username: str, password: str) -> None:
+        self._base_url = base_url.rstrip("/")
+        self._username = username
+        self._password = password
+        self._token: str | None = None
+        self._cookies: dict[str, str] = {}
+        self._lock = asyncio.Lock()
+
+    async def _fetch_token(self) -> str:
+        """POST to /jwt/login with form-encoded credentials and return the raw token."""
+        async with httpx.AsyncClient(base_url=self._base_url) as client:
+            response = await client.post(
+                "/jwt/login",
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data={"username": self._username, "password": self._password},
+            )
+            response.raise_for_status()
+            self._cookies = dict(client.cookies)  # AR-JWT + route session cookies
+            return response.text.strip()
+
+    async def _get_token(self) -> str:
+        """Return the cached token, fetching a new one if the cache is empty."""
+        if self._token is None:
+            async with self._lock:
+                if self._token is None:  # re-check after acquiring the lock
+                    self._token = await self._fetch_token()
+        return self._token
+
+    def invalidate(self) -> None:
+        """Discard the cached token so the next request triggers a fresh fetch."""
+        self._token = None
+        self._cookies = {}
+
+    async def async_auth_flow(
+        self, request: httpx.Request
+    ) -> AsyncGenerator[httpx.Request, httpx.Response]:
+        token = await self._get_token()
+        request.headers["Authorization"] = f"AR-JWT{token}"
+        if self._cookies:
+            request.headers["Cookie"] = "; ".join(
+                f"{k}={v}" for k, v in self._cookies.items()
+            )
+        response = yield request
+
+        if response.status_code == 401:
+            logger.info("BMC Helix token rejected (401) — refreshing and retrying.")
+            async with self._lock:
+                self._token = await self._fetch_token()
+            request.headers["Authorization"] = f"AR-JWT{self._token}"
+            if self._cookies:
+                request.headers["Cookie"] = "; ".join(
+                    f"{k}={v}" for k, v in self._cookies.items()
+                )
+            yield request
 
 
 def _parse_bmc_errors(response: httpx.Response) -> list[BmcHelixError]:
@@ -81,40 +148,28 @@ def _to_bmc_payload(incident: CreateIncidentInput) -> dict:
 
 
 class BmcHelixAdapter(BmcHelixPort):
-    def __init__(self, client: HttpxClient, username: str, password: str) -> None:
+    def __init__(self, client: HttpxClient, auth: BmcHelixAuth) -> None:
         self._client = client
-        self.username = username
-        self.password = password
+        self._auth = auth
 
     async def stop(self) -> None:
         await self._client.close()
 
     async def fetch_token(self) -> str:
-        """
-        Authenticate against the BMC Helix API and return the JWT token.
-        Assuming the token is returned as plain text.
-        """
-        response = await self._client.post(
-            "/jwt/login",
-            headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data={"username": self.username, "password": self.password},
-        )
-        token = response.text.strip()
-        return token
+        """Return the current cached JWT, fetching a new one if necessary."""
+        return await self._auth._get_token()
 
     def build_request_payload(self, payload: CreateIncidentInput) -> dict:
         return _to_bmc_payload(payload)
 
     async def create_incident(self, payload: CreateIncidentInput) -> IncidentResponse:
         """Create an incident in BMC Helix and return the created entry."""
-        token = await self.fetch_token()
         params = {"fields": "values(Incident Number,Request ID)"}
         bmc_payload = {"values": _to_bmc_payload(payload)}
         logger.info(f"Creating incident in BMC Helix - payload: {bmc_payload}")
         try:
             response = await self._client.post(
                 "/arsys/v1/entry/HPD:IncidentInterface_Create",
-                headers={"Authorization": f"AR-JWT{token}"},
                 json=bmc_payload,
                 params=params,
             )
@@ -137,7 +192,6 @@ class BmcHelixAdapter(BmcHelixPort):
 
     async def get_incident(self, incident_number: str) -> IncidentInfo:
         """Query a single incident from BMC Helix by its incident number."""
-        token = await self.fetch_token()
         params = {
             "q": f"'Incident Number'=\"{incident_number}\"",
             "fields": f"values({_INCIDENT_FIELDS})",
@@ -145,7 +199,6 @@ class BmcHelixAdapter(BmcHelixPort):
         try:
             response = await self._client.get(
                 "/arsys/v1/entry/HPD:Help Desk/",
-                headers={"Authorization": f"AR-JWT{token}"},
                 params=params,
             )
         except httpx.HTTPStatusError as exc:
@@ -201,9 +254,11 @@ class BmcHelixAdapter(BmcHelixPort):
     def build(
         cls, base_url: str, username: str, password: str, timeout: float = 30.0
     ) -> "BmcHelixAdapter":
-        """Factory method — builds the HttpxClient with BMC Helix auth config."""
+        """Factory method — builds the adapter with BMC Helix auth wired into the HTTP client."""
+        auth = BmcHelixAuth(base_url, username, password)
         http_client = HttpxClient(
             base_url=base_url,
+            auth=auth,
             timeout=timeout,
         )
-        return cls(http_client, username, password)
+        return cls(http_client, auth)
