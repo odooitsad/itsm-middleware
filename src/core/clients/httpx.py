@@ -20,9 +20,10 @@ class HttpxClient:
         auth: httpx.Auth | None = None,
         headers: dict | None = None,
         timeout: float = 10.0,
+        **kwargs,
     ):
         self._client = httpx.AsyncClient(
-            base_url=base_url, auth=auth, headers=headers, timeout=timeout
+            base_url=base_url, auth=auth, headers=headers, timeout=timeout, **kwargs
         )
 
     async def close(self) -> None:
