@@ -5,8 +5,8 @@ from pathlib import Path
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from src.bmc_helix.config import BMCHelixSettings
 from src.core.env_utils import ROOT_DIR, get_env_file_path
+from src.modules.bmc_helix.config import BMCHelixSettings
 
 
 class DBDriver(StrEnum):

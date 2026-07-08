@@ -1,8 +1,8 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.bmc_helix.domain.entities import Transaction, TransactionStatus
-from src.bmc_helix.domain.exceptions import DomainException
-from src.bmc_helix.infrastructure.models import TransactionModel
+from src.modules.bmc_helix.domain.entities import Transaction, TransactionStatus
+from src.modules.bmc_helix.domain.exceptions import DomainException
+from src.modules.bmc_helix.infrastructure.models import TransactionModel
 
 
 class TransactionRepository:

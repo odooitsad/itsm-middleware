@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from src.bmc_helix.api.dependencies import BmcHelixAdapterDep, CreateIncidentDep
-from src.bmc_helix.api.schemas import (
+from src.modules.bmc_helix.api.dependencies import BmcHelixAdapterDep, CreateIncidentDep
+from src.modules.bmc_helix.api.schemas import (
     CreateIncidentRequest,
     CreateIncidentResponse,
     IncidentInfoResponse,

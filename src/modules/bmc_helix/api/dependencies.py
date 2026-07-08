@@ -4,10 +4,10 @@ from typing import Annotated
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.bmc_helix.application.use_cases import CreateIncidentUseCase
-from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
-from src.bmc_helix.infrastructure.repositories import TransactionRepository
 from src.core.database.session import DatabaseAdapter
+from src.modules.bmc_helix.application.use_cases import CreateIncidentUseCase
+from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
+from src.modules.bmc_helix.infrastructure.repositories import TransactionRepository
 
 
 async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:

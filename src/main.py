@@ -6,20 +6,23 @@ from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
 
-from src.bmc_helix.api.exception_handlers import (
-    bmc_helix_client_error_handler,
-    incident_creation_error_handler,
-    validation_exception_handler,
-)
-from src.bmc_helix.api.routers.main import bmc_helix_router
-from src.bmc_helix.domain.exceptions import BmcHelixClientError, IncidentCreationError
-from src.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 from src.constans import DESCRIPTION, PROJECT_NAME
 from src.core.config import get_settings
 from src.core.database.base import Base
 from src.core.database.session import DatabaseAdapter
 from src.core.logger import get_logger
 from src.health_router import router as health_router
+from src.modules.bmc_helix.api.exception_handlers import (
+    bmc_helix_client_error_handler,
+    incident_creation_error_handler,
+    validation_exception_handler,
+)
+from src.modules.bmc_helix.api.routers.main import bmc_helix_router
+from src.modules.bmc_helix.domain.exceptions import (
+    BmcHelixClientError,
+    IncidentCreationError,
+)
+from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 
 logger = get_logger(__name__)
 settings = get_settings()

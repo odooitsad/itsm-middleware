@@ -3,19 +3,19 @@ from collections.abc import AsyncGenerator
 
 import httpx
 
-from src.bmc_helix.domain.entities import (
+from src.core.clients.httpx import HttpxClient
+from src.core.logger import get_logger
+from src.modules.bmc_helix.domain.entities import (
     BmcHelixError,
     CreateIncidentInput,
     IncidentInfo,
     IncidentResponse,
 )
-from src.bmc_helix.domain.exceptions import (
+from src.modules.bmc_helix.domain.exceptions import (
     BmcHelixClientError,
     IncidentCreationError,
 )
-from src.bmc_helix.domain.ports import BmcHelixPort
-from src.core.clients.httpx import HttpxClient
-from src.core.logger import get_logger
+from src.modules.bmc_helix.domain.ports import BmcHelixPort
 
 logger = get_logger(__name__)
 

@@ -3,7 +3,10 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
-from src.bmc_helix.domain.exceptions import BmcHelixClientError, IncidentCreationError
+from src.modules.bmc_helix.domain.exceptions import (
+    BmcHelixClientError,
+    IncidentCreationError,
+)
 
 
 async def validation_exception_handler(_: Request, exc: Exception) -> JSONResponse:

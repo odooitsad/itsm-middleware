@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from src.bmc_helix.domain.entities import BmcHelixError
+    from src.modules.bmc_helix.domain.entities import BmcHelixError
 
 
 class DomainException(Exception):

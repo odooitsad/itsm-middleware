@@ -2,8 +2,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from src.bmc_helix.domain.entities import CreateIncidentInput
 from src.core.base_schemas import ZabbixBase, ZabbixEventUrgency
+from src.modules.bmc_helix.domain.entities import CreateIncidentInput
 
 
 class CreateIncidentRequest(BaseModel):

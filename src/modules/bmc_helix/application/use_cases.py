@@ -1,14 +1,14 @@
 import dataclasses
 
-from src.bmc_helix.domain.entities import (
+from src.modules.bmc_helix.domain.entities import (
     CreateIncidentInput,
     IncidentResponse,
     Transaction,
     TransactionStatus,
 )
-from src.bmc_helix.domain.exceptions import IncidentCreationError
-from src.bmc_helix.domain.ports import BmcHelixPort
-from src.bmc_helix.domain.repositories import TransactionRepositoryPort
+from src.modules.bmc_helix.domain.exceptions import IncidentCreationError
+from src.modules.bmc_helix.domain.ports import BmcHelixPort
+from src.modules.bmc_helix.domain.repositories import TransactionRepositoryPort
 
 
 class CreateIncidentUseCase:

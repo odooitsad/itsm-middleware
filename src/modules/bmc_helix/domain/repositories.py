@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from src.bmc_helix.domain.entities import Transaction
+from src.modules.bmc_helix.domain.entities import Transaction
 
 
 class TransactionRepositoryPort(Protocol):
