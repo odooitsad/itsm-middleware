@@ -6,10 +6,10 @@ from src.modules.bmc_helix.api.schemas import (
     ZabbixEvent,
 )
 
-router = APIRouter(prefix="/incidents", tags=["Zabbix"])
+router = APIRouter()
 
 
-@router.post("/from-zabbix", response_model=CreateIncidentResponse, status_code=201)
+@router.post("", response_model=CreateIncidentResponse, status_code=201)
 async def create_incident(payload: ZabbixEvent, create_incident: CreateIncidentDep):
     created_incident = await create_incident.execute(
         payload.to_input(),

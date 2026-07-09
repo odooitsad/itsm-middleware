@@ -86,6 +86,7 @@ app = FastAPI(
     description=DESCRIPTION,
     version="0.1.0",
     lifespan=lifespan,
+    prefix="/api",
 )
 
 

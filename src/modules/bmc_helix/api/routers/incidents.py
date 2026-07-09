@@ -7,10 +7,10 @@ from src.modules.bmc_helix.api.schemas import (
     IncidentInfoResponse,
 )
 
-router = APIRouter(prefix="/incidents", tags=["BMC-Helix"])
+router = APIRouter()
 
 
-@router.post("/from-bmc", response_model=CreateIncidentResponse, status_code=201)
+@router.post("", response_model=CreateIncidentResponse, status_code=201)
 async def create_incident(
     payload: CreateIncidentRequest, create_incident: CreateIncidentDep
 ):
