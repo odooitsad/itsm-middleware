@@ -1,9 +1,9 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
 
-class ZabbixEventUrgency(str, Enum):
+class ZabbixEventUrgency(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -44,4 +44,4 @@ class ZabbixBase(BaseModel):
         examples=["DATASMART//GRH0931//memoria//supero 70%"],
         max_length=100,
     )
-    urgency: ZabbixEventUrgency
+    urgency: ZabbixEventUrgency = ZabbixEventUrgency.LOW
