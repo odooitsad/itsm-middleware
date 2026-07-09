@@ -3,25 +3,18 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
-from pydantic import ValidationError
 
 from src.constans import DESCRIPTION, PROJECT_NAME
+from src.core.base_exception_handlers import register_base_exception_handlers
 from src.core.config import get_settings
 from src.core.database.base import Base
 from src.core.database.session import DatabaseAdapter
 from src.core.logger import get_logger
 from src.health_router import router as health_router
 from src.modules.bmc_helix.api.exception_handlers import (
-    bmc_helix_client_error_handler,
-    incident_creation_error_handler,
-    validation_exception_handler,
+    register_bmc_helix_exception_handlers,
 )
 from src.modules.bmc_helix.api.routers.main import bmc_helix_router
-from src.modules.bmc_helix.domain.exceptions import (
-    BmcHelixClientError,
-    IncidentCreationError,
-)
 from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
 
 logger = get_logger(__name__)
@@ -94,7 +87,5 @@ app.include_router(health_router)
 app.include_router(bmc_helix_router)
 
 
-app.add_exception_handler(ValidationError, validation_exception_handler)
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
-app.add_exception_handler(IncidentCreationError, incident_creation_error_handler)
-app.add_exception_handler(BmcHelixClientError, bmc_helix_client_error_handler)
+register_base_exception_handlers(app)
+register_bmc_helix_exception_handlers(app)
