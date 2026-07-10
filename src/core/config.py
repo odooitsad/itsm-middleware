@@ -2,11 +2,12 @@ from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
 
-from pydantic import Field
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.env_utils import ROOT_DIR, get_env_file_path
 from src.modules.bmc_helix.config import BMCHelixSettings
+from src.modules.its_helpdesk.config import ItsHelpdeskSettings
 
 
 class DBDriver(StrEnum):
@@ -48,7 +49,19 @@ class Settings(BaseSettings):
         }
         return drivers[self.db_driver] + "://" + uri
 
-    bmc_helix: BMCHelixSettings = Field(default_factory=BMCHelixSettings)  # type: ignore[call-arg]
+    bmc_helix_enabled: bool = False
+    its_helpdesk_enabled: bool = False
+
+    bmc_helix: BMCHelixSettings | None = None
+    its_helpdesk: ItsHelpdeskSettings | None = None
+
+    @model_validator(mode="after")
+    def load_module_settings(self) -> "Settings":
+        if self.bmc_helix_enabled:
+            self.bmc_helix = BMCHelixSettings()  # type: ignore[call-arg]
+        if self.its_helpdesk_enabled:
+            self.its_helpdesk = ItsHelpdeskSettings()  # type: ignore[call-arg]
+        return self
 
 
 @lru_cache

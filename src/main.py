@@ -15,19 +15,10 @@ from src.modules.bmc_helix.api.exception_handlers import (
     register_bmc_helix_exception_handlers,
 )
 from src.modules.bmc_helix.api.routers.main import bmc_helix_router
-from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
+from src.modules.bmc_helix.lifespan import bmc_helix_lifespan
 
 logger = get_logger(__name__)
 settings = get_settings()
-
-
-async def init_bmc_helix_adapter() -> BmcHelixAdapter:
-    return BmcHelixAdapter.build(
-        settings.bmc_helix.base_url,
-        settings.bmc_helix.username,
-        settings.bmc_helix.password,
-        settings.bmc_helix.timeout,
-    )
 
 
 async def build_db_adapter() -> DatabaseAdapter:
@@ -47,7 +38,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info(f"Loading settings from: {Path(str_path).name}")
 
     db = await build_db_adapter()
-    bmc_helix = None
     try:
         await db.connect()
         app.state.db = db
@@ -57,21 +47,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables ensured (bmc_helix)")
 
-        bmc_helix = await init_bmc_helix_adapter()
-        app.state.bmc_helix = bmc_helix
-        logger.info("BMC Helix adapter started")
-
-        yield
+        # async with bmc_helix_lifespan(app), its_helpdesk_lifespan(app):
+        async with bmc_helix_lifespan(app):
+            yield
     except Exception as e:
         logger.exception(f"Error during application startup: {e}")
         raise
     finally:
         await db.disconnect()
         logger.info("Database connection pool closed")
-
-        if bmc_helix:
-            await bmc_helix.stop()
-            logger.info("BMC Helix adapter stopped")
 
 
 app = FastAPI(
@@ -85,7 +69,10 @@ app = FastAPI(
 
 app.include_router(health_router)
 app.include_router(bmc_helix_router)
+# app.include_router(its_helpdesk_router)
 
 
 register_base_exception_handlers(app)
 register_bmc_helix_exception_handlers(app)
+# app.add_exception_handler(TicketCreationError, ticket_creation_error_handler)
+# app.add_exception_handler(ItsHelpdeskClientError, its_helpdesk_client_error_handler)
