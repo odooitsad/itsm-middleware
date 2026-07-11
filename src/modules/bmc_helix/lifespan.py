@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from src.core.config import get_settings
+from src.core.database.base import Base
 from src.core.logger import get_logger
 from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
+from src.modules.bmc_helix.infrastructure.models import TransactionModel
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -17,6 +19,15 @@ async def bmc_helix_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("BMC Helix integration is disabled — skipping initialization")
         yield
         return
+
+    async with app.state.db.engine.begin() as conn:
+        await conn.run_sync(
+            lambda sync_conn: Base.metadata.create_all(
+                sync_conn,
+                tables=[TransactionModel.__table__],  # type: ignore[arg-type]
+            )
+        )
+    logger.info("BMC Helix table ensured")
 
     adapter = BmcHelixAdapter.build(
         settings.bmc_helix.base_url,
