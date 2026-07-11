@@ -1,0 +1,16 @@
+from typing import Protocol
+
+from src.modules.its_helpdesk.domain.entities import (
+    CloseTicketInput,
+    CloseTicketOut,
+    CreateTicketInput,
+    CreateTicketOut,
+)
+
+
+class ItsHelpdeskPort(Protocol):
+    async def stop(self) -> None: ...
+    async def authenticate(self) -> None: ...
+    def build_request_payload(self, payload: CreateTicketInput) -> dict: ...
+    async def create_ticket(self, payload: CreateTicketInput) -> CreateTicketOut: ...
+    async def close_ticket(self, payload: CloseTicketInput) -> CloseTicketOut: ...

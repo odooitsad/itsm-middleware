@@ -1,0 +1,9 @@
+from typing import Protocol
+
+from src.modules.its_helpdesk.domain.entities import Transaction
+
+
+class TransactionRepositoryPort(Protocol):
+    async def get(self, transaction_id: int) -> Transaction | None: ...
+    async def create(self, transaction: Transaction) -> Transaction: ...
+    async def update(self, transaction: Transaction) -> Transaction: ...
