@@ -3,7 +3,8 @@ from collections.abc import AsyncGenerator
 
 import httpx
 
-from src.core.clients.httpx import HttpxClient
+from src.core.clients.http import HttpClient, HttpResponse
+from src.core.exceptions import HttpClientError
 from src.core.logger import get_logger
 from src.modules.bmc_helix.domain.entities import (
     BmcHelixError,
@@ -84,10 +85,10 @@ class BmcHelixAuth(httpx.Auth):
             yield request
 
 
-def _parse_bmc_errors(response: httpx.Response) -> list[BmcHelixError]:
+def _parse_bmc_errors(response: HttpResponse) -> list[BmcHelixError]:
     """Parse the BMC Helix error list from a 4xx/5xx response body."""
     try:
-        data = response.json()
+        data = response.json
         if isinstance(data, list):
             return [
                 BmcHelixError(
@@ -148,7 +149,7 @@ def _to_bmc_payload(incident: CreateIncidentInput) -> dict:
 
 
 class BmcHelixAdapter(BmcHelixPort):
-    def __init__(self, client: HttpxClient, auth: BmcHelixAuth) -> None:
+    def __init__(self, client: HttpClient, auth: BmcHelixAuth) -> None:
         self._client = client
         self._auth = auth
 
@@ -173,16 +174,24 @@ class BmcHelixAdapter(BmcHelixPort):
                 json=bmc_payload,
                 params=params,
             )
-        except httpx.HTTPStatusError as exc:
-            bmc_errors = _parse_bmc_errors(exc.response)
-            raise IncidentCreationError(
-                f"BMC Helix returned {exc.response.status_code} while creating the incident.",
-                bmc_errors=bmc_errors,
-            ) from exc
-        data = response.json()
-        values = data["values"]
+        except HttpClientError as exc:
+            response = exc.response
+            if response:
+                bmc_errors = _parse_bmc_errors(response)
+                raise IncidentCreationError(
+                    f"BMC Helix returned {response.status_code} while creating the incident.",
+                    bmc_errors=bmc_errors,
+                ) from exc
+            raise
+
+        data = response.json
         logger.debug(f"Create incident response data: {data}")
+        values = data["values"]
         incident_id = values.get("Incident Number", "")
+        if not incident_id:
+            raise IncidentCreationError(
+                "BMC Helix did not return an incident number after creation."
+            )
         logger.info(f"Incident ID created: {incident_id}")
 
         return IncidentResponse(
@@ -201,14 +210,18 @@ class BmcHelixAdapter(BmcHelixPort):
                 "/arsys/v1/entry/HPD:Help Desk/",
                 params=params,
             )
-        except httpx.HTTPStatusError as exc:
-            bmc_errors = _parse_bmc_errors(exc.response)
-            raise BmcHelixClientError(
-                f"BMC Helix returned {exc.response.status_code} for incident '{incident_number}'.",
-                status_code=exc.response.status_code,
-                bmc_errors=bmc_errors,
-            ) from exc
-        data = response.json()
+        except HttpClientError as exc:
+            response = exc.response
+            if response:
+                bmc_errors = _parse_bmc_errors(response)
+                raise BmcHelixClientError(
+                    f"BMC Helix did not return data for incident '{incident_number}'.",
+                    status_code=response.status_code,
+                    bmc_errors=bmc_errors,
+                ) from exc
+            raise
+
+        data = response.json
         entries = data.get("entries", [])
         if not entries:
             raise BmcHelixClientError(
@@ -256,7 +269,7 @@ class BmcHelixAdapter(BmcHelixPort):
     ) -> "BmcHelixAdapter":
         """Factory method — builds the adapter with BMC Helix auth wired into the HTTP client."""
         auth = BmcHelixAuth(base_url, username, password)
-        http_client = HttpxClient(
+        http_client = HttpClient(
             base_url=base_url,
             auth=auth,
             timeout=timeout,
