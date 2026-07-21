@@ -6,7 +6,7 @@ from src.modules.its_helpdesk.domain.entities import (
     Transaction,
     TransactionStatus,
 )
-from src.modules.its_helpdesk.domain.exceptions import TicketCreationError
+from src.modules.its_helpdesk.domain.exceptions import ItsHelpdeskClientError
 from src.modules.its_helpdesk.domain.ports import ItsHelpdeskPort
 from src.modules.its_helpdesk.domain.repositories import TransactionRepositoryPort
 
@@ -34,7 +34,7 @@ class CreateTicketUseCase:
         )
         try:
             response = await self._adapter.create_ticket(payload)
-        except TicketCreationError as exc:
+        except ItsHelpdeskClientError as exc:
             transaction.status = TransactionStatus.ERROR
             transaction.response = {"error": str(exc)}
             await self._repository.update(transaction)

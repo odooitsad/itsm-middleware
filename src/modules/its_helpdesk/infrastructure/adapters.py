@@ -1,6 +1,4 @@
-import httpx
-
-from src.core.clients.httpx import HttpxClient
+from src.core.clients.http import HttpClient, HttpResponse
 from src.core.logger import get_logger
 from src.modules.its_helpdesk.domain.entities import (
     CloseTicketInput,
@@ -8,7 +6,7 @@ from src.modules.its_helpdesk.domain.entities import (
     CreateTicketInput,
     CreateTicketOut,
 )
-from src.modules.its_helpdesk.domain.exceptions import TicketCreationError
+from src.modules.its_helpdesk.domain.exceptions import ItsHelpdeskClientError
 from src.modules.its_helpdesk.domain.ports import ItsHelpdeskPort
 
 logger = get_logger(__name__)
@@ -47,7 +45,7 @@ def _close_input_to_odoo_params(ticket: CloseTicketInput) -> dict:
 class ItsHelpdeskAdapter(ItsHelpdeskPort):
     def __init__(
         self,
-        client: HttpxClient,
+        client: HttpClient,
         db_name: str,
         username: str,
         password: str,
@@ -70,7 +68,7 @@ class ItsHelpdeskAdapter(ItsHelpdeskPort):
         jsonrpc_id: int,
         timeout: float,
     ) -> "ItsHelpdeskAdapter":
-        client = HttpxClient(base_url=base_url, timeout=timeout, verify=verify_ssl)
+        client = HttpClient(base_url=base_url, timeout=timeout, verify=verify_ssl)
         return cls(client, db_name, username, password, jsonrpc_id)
 
     async def stop(self) -> None:
@@ -79,51 +77,60 @@ class ItsHelpdeskAdapter(ItsHelpdeskPort):
     def build_request_payload(self, payload: CreateTicketInput) -> dict:
         return _create_input_to_odoo_params(payload)
 
+    def _validate_response(self, response: HttpResponse, action: str) -> None:
+        json_data = response.json
+        error_msg = f"ITS Helpdesk {action} failed"
+
+        if not json_data:
+            logger.warning("Validation 1")
+            logger.error("%s: %s", error_msg, response.text)
+            raise ItsHelpdeskClientError(error_msg, 502)
+
+        if "error" in json_data:
+            logger.warning("Validation 2")
+            logger.warning(json_data)
+            message = (
+                json_data.get("error", {})
+                .get("data", {})
+                .get("message", "Unknown error")
+            )
+            logger.error("%s: %s", error_msg, message)
+            raise ItsHelpdeskClientError(f"{error_msg}: {message}", 400)
+
+        result = json_data.get("result", {})
+        if not result:
+            logger.warning("Validation 3")
+            logger.error("%s: %s", f"{error_msg} (No result)", json_data)
+            raise ItsHelpdeskClientError(error_msg, 502)
+
+        if "error" in result:
+            logger.warning("Validation 4")
+            detail = result.get("details") or result.get("error", "Unknown error")
+            status_code = 401 if action == "authentication" else 400
+            logger.error("%s - %s", error_msg, detail)
+            raise ItsHelpdeskClientError(f"{error_msg} - {detail}", status_code)
+
     async def authenticate(self) -> None:
         params = {
             "db": self._db_name,
-            "login": self._username,
+            "login": f"{self._username}",
             "password": self._password,
         }
         payload = _jsonrpc_body(self._jsonrpc_id, params)
-        await self._client.post("/login", json=payload)
+        response = await self._client.post("/login", json=payload)
 
-    def _validate_odoo_error(self, data: dict) -> None:
-        if "error" in data:
-            error = data.get("error", {})
-            error_data = error.get("data", {})
-            logger.error(
-                "Ticket creation failed: %s", error_data.get("debug", "Unknown error")
-            )
-            raise TicketCreationError(
-                f"ITS Helpdesk ticket creation error: {error.get('message', 'Unknown error')}"
-            )
+        self._validate_response(response, action="authentication")
 
     async def create_ticket(self, payload: CreateTicketInput) -> CreateTicketOut:
         await self.authenticate()
-
         body = _jsonrpc_body(self._jsonrpc_id, _create_input_to_odoo_params(payload))
         logger.info("Creating ticket in ITS Helpdesk — payload params: %s", payload)
 
-        try:
-            response = await self._client.post("/tickets/create", json=body)
-        except httpx.HTTPStatusError as exc:
-            raise TicketCreationError(
-                f"ITS Helpdesk returned {exc.response.status_code} while creating the ticket."
-            ) from exc
+        response = await self._client.post("/tickets/create", json=body)
+        self._validate_response(response, action="ticket creation")
 
-        data = response.json()
-        self._validate_odoo_error(data)
-
+        data = response.json
         result = data.get("result", {})
-        if not result:
-            msg = "Ticket creation failed: No result returned from ITS Helpdesk."
-            logger.error("%s %s", msg, data)
-            raise TicketCreationError(msg)
-
-        if "error" in result:
-            logger.error("Ticket creation failed: %s ", result)
-            raise TicketCreationError("Ticket creation failed")
 
         logger.info("Ticket created: %s", result.get("ticket_number"))
         return CreateTicketOut(
@@ -133,29 +140,14 @@ class ItsHelpdeskAdapter(ItsHelpdeskPort):
 
     async def close_ticket(self, payload: CloseTicketInput) -> CloseTicketOut:
         await self.authenticate()
-
         body = _jsonrpc_body(self._jsonrpc_id, _close_input_to_odoo_params(payload))
         logger.info("Closing ticket in ITS Helpdesk — params: %s", body)
 
-        try:
-            response = await self._client.post("/ticket/close", json=body)
-        except httpx.HTTPStatusError as exc:
-            raise TicketCreationError(
-                f"ITS Helpdesk returned {exc.response.status_code} while closing the ticket."
-            ) from exc
+        response = await self._client.post("/ticket/close", json=body)
+        self._validate_response(response, action="ticket closure")
 
-        data = response.json()
-        self._validate_odoo_error(data)
-
+        data = response.json
         result = data.get("result", {})
-        if not result:
-            msg = "Ticket closure failed: No result returned from ITS Helpdesk."
-            logger.error("%s %s", msg, data)
-            raise TicketCreationError(msg)
-
-        if "error" in result:
-            logger.error("Ticket closure failed: %s ", result)
-            raise TicketCreationError(f"Ticket closure failed: {result['error']}")
 
         logger.info("Ticket closed: %s", result.get("ticket_number"))
         return CloseTicketOut(
