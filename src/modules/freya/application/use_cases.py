@@ -7,6 +7,7 @@ from src.modules.freya.domain.entities import (
 )
 from src.modules.freya.domain.exceptions import FreyaClientError
 from src.modules.freya.domain.ports import FreyaPort
+from src.modules.freya.domain.repositories import TransactionRepositoryPort
 
 logger = get_logger(__name__)
 
@@ -44,8 +45,11 @@ def _build_close_im_payload(payload: CloseIMInput) -> dict:
 
 
 class FreyaUseCase:
-    def __init__(self, adapter: FreyaPort) -> None:
+    def __init__(
+        self, adapter: FreyaPort, repository: TransactionRepositoryPort
+    ) -> None:
         self._adapter = adapter
+        self._repository = repository
 
     async def create_im(self, payload: CreateIMInput) -> IMResult:
         body = _build_create_im_payload(payload)
