@@ -34,7 +34,6 @@ class CreateIMRequest(BaseModel):
     category: str = Field("incident")
     ci_is_operational: bool = Field(True)
     description: str | list[str] = Field(examples=["Pruebas DEV"])
-    event_id: str = Field(max_length=60, examples=["123456789"])
     impact: Literal["1", "2", "3"] = Field(
         description="Impact levels: '1' - High, '2' - Medium, '3' - Low"
     )
@@ -63,7 +62,7 @@ class CreateIMRequest(BaseModel):
             category=self.category,
             ci_is_operational=self.ci_is_operational,
             description=self.description,  # type: ignore[arg-type]
-            event_id=self.event_id,
+            event_id="1",
             impact=self.impact,
             init_service=self.init_service,
             origin=self.origin,
