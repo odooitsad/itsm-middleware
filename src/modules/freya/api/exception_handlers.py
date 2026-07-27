@@ -1,14 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from src.modules.freya.domain.exceptions import FreyaAuthError, FreyaClientError
+from src.modules.freya.domain.exceptions import FreyaClientError
 
 
 def register_freya_exception_handlers(app: FastAPI) -> None:
-    @app.exception_handler(FreyaAuthError)
-    async def freya_auth_error_handler(_: Request, exc: FreyaAuthError) -> JSONResponse:
-        return JSONResponse(status_code=502, content={"detail": str(exc)})
-
     @app.exception_handler(FreyaClientError)
     async def freya_client_error_handler(
         _: Request, exc: FreyaClientError

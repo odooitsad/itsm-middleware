@@ -2,7 +2,7 @@ from src.core.clients.http import HttpClient
 from src.core.exceptions import HttpClientError
 from src.core.logger import get_logger
 from src.modules.freya.domain.entities import AuthToken, FreyaResponse
-from src.modules.freya.domain.exceptions import FreyaAuthError, FreyaClientError
+from src.modules.freya.domain.exceptions import FreyaClientError
 from src.modules.freya.domain.ports import FreyaPort
 
 logger = get_logger(__name__)
@@ -50,19 +50,19 @@ class FreyaAdapter(FreyaPort):
         try:
             response = await self._client.post("/Login", json=payload)
         except HttpClientError as exc:
-            if exc.response is not None and exc.response.status_code in (400, 401):
-                message = (exc.response.json or {}).get("results", str(exc))
-                logger.error(f"Auth - status {exc.response.status_code} - {message}")
-                raise FreyaAuthError(str(message)) from exc
-            logger.error(f"Auth - {exc}")
-            raise
+            response = exc.response
+            if response is None or response.json is None:
+                raise
+            json_res = response.json
+            result = json_res.get("results")
+            raise FreyaClientError(result, 401) from exc
 
-        json_response = response.json or {}
-        result = json_response.get("results", "Unknown result")
-        freya_response = FreyaResponse(**json_response)
+        freya_response = FreyaResponse(**response.json)
+
+        result = freya_response.get_result_text() or "Unknown error"
         if freya_response.has_an_error_code():
-            logger.error(f"Auth - {result}")
-            raise FreyaAuthError(result)
+            logger.error(f"Auth - status {response.status_code} - {result}")
+            raise FreyaClientError(result, 401)
 
         token = AuthToken(result)
         return token.authorization_header
