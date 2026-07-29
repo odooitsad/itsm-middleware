@@ -2,10 +2,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.freya.domain.entities import IMStatus, Transaction, TransactionStatus
 from src.modules.freya.domain.exceptions import DomainException
+from src.modules.freya.domain.repositories import TransactionRepositoryPort
 from src.modules.freya.infrastructure.models import TransactionModel
 
 
-class TransactionRepository:
+class TransactionRepository(TransactionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -18,6 +19,7 @@ class TransactionRepository:
         self._session.add(model)
         await self._session.flush()
         await self._session.refresh(model)
+        await self._session.commit()
         return _to_entity(model)
 
     async def update(self, transaction: Transaction) -> Transaction:
@@ -36,6 +38,7 @@ class TransactionRepository:
         model.response = transaction.response
         await self._session.flush()
         await self._session.refresh(model)
+        await self._session.commit()
         return _to_entity(model)
 
 

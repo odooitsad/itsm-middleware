@@ -2,10 +2,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.bmc_helix.domain.entities import Transaction, TransactionStatus
 from src.modules.bmc_helix.domain.exceptions import DomainException
+from src.modules.bmc_helix.domain.repositories import TransactionRepositoryPort
 from src.modules.bmc_helix.infrastructure.models import TransactionModel
 
 
-class TransactionRepository:
+class TransactionRepository(TransactionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -18,6 +19,7 @@ class TransactionRepository:
         self._session.add(model)
         await self._session.flush()
         await self._session.refresh(model)
+        await self._session.commit()
         return _to_entity(model)
 
     async def update(self, transaction: Transaction) -> Transaction:
@@ -34,6 +36,7 @@ class TransactionRepository:
         model.request = transaction.request
         await self._session.flush()
         await self._session.refresh(model)
+        await self._session.commit()
         return _to_entity(model)
 
 

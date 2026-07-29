@@ -99,8 +99,10 @@ def _parse_bmc_errors(response: HttpResponse) -> list[BmcHelixError]:
                 )
                 for item in data
             ]
-    except Exception:
-        logger.warning("Failed to parse BMC Helix error response: %s", response.text)
+    except Exception as exc:
+        logger.warning(
+            "Failed to parse BMC Helix error response: %s", response.text, exc_info=exc
+        )
     return []
 
 
