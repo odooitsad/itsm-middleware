@@ -1,12 +1,14 @@
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from src.core.env_utils import ROOT_DIR, get_env_file_path
 from src.modules.bmc_helix.config import BMCHelixSettings
+from src.modules.freya.config import FreyaSettings
 from src.modules.its_helpdesk.config import ItsHelpdeskSettings
 
 
@@ -38,6 +40,10 @@ class Settings(BaseSettings):
     db_pool_recycle: int = 3600
 
     @property
+    def tz(self) -> ZoneInfo:
+        return ZoneInfo(self.TZ)
+
+    @property
     def database_url(self) -> str:
         """
         Builds the database connection URL based on the configured driver and credentials.
@@ -51,9 +57,11 @@ class Settings(BaseSettings):
 
     bmc_helix_enabled: bool = False
     its_helpdesk_enabled: bool = False
+    freya_enabled: bool = False
 
     bmc_helix: BMCHelixSettings | None = None
     its_helpdesk: ItsHelpdeskSettings | None = None
+    freya: FreyaSettings | None = None
 
     @model_validator(mode="after")
     def load_module_settings(self) -> "Settings":
@@ -61,6 +69,8 @@ class Settings(BaseSettings):
             self.bmc_helix = BMCHelixSettings()  # type: ignore[call-arg]
         if self.its_helpdesk_enabled:
             self.its_helpdesk = ItsHelpdeskSettings()  # type: ignore[call-arg]
+        if self.freya_enabled:
+            self.freya = FreyaSettings()  # type: ignore[call-arg]
         return self
 
 
