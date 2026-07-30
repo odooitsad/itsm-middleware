@@ -105,21 +105,37 @@ class FreyaUseCase:
         logger.info(f"Working note added to {im}: {payload.working_note[0][:200]}...")
         return IMResult(detail=result, im=im)
 
-    async def close_im(self, payload: CloseIMInput) -> IMResult:
-        im_id = payload.im_id
-        if im_id == "":
-            raise FreyaClientError("Incident ID cannot be empty", status_code=400)
-
-        transaction = await self._transaction.get_by_im_id(im_id)
-        if transaction is None:
-            logger.error(f"Transaction with IM {im_id} not found while closing IM")
-            raise FreyaClientError(f"Incident with {im_id} not found", status_code=404)
-
+    async def _finalize_incident_closure(
+        self, body: dict, transaction: Transaction
+    ) -> IMResult:
+        im_id = body["IdIm"]
+        result = await self._adapter.send_post_request("ResolvedIM", body)
         transaction.status_im = IMStatus.CLOSED
         await self._transaction.update(transaction)
+        logger.info(f"{im_id} resolved")
+        return IMResult(detail=result, im=im_id)
+
+    async def close_im(self, payload: CloseIMInput) -> IMResult:
+        im_id = payload.im_id
+        transaction = await self._transaction.get_by_im_id(im_id)
+        if transaction is None:
+            logger.error(f"Transaction with ID {im_id} not found while closing IM")
+            raise FreyaClientError(f"No transaction with ID {im_id}", status_code=404)
+
         body = _build_close_im_payload(payload)
         logger.info(f"Resolving IM - transaction {transaction.id} - {body}")
-        result = await self._adapter.send_post_request("ResolvedIM", body)
-        logger.info(f"{payload.im_id} resolved")
+        return await self._finalize_incident_closure(body, transaction)
 
-        return IMResult(detail=result, im=payload.im_id)
+    async def close_im_from_zabbix(
+        self, payload: CloseIMInput, transaction_id: int
+    ) -> IMResult:
+        transaction = await self._transaction.get(transaction_id)
+        if transaction is None:
+            msg = f"Transaction with id {transaction_id} not found while closing IM"
+            logger.error(msg)
+            raise FreyaClientError(msg, status_code=404)
+
+        payload.im_id = transaction.im_id or ""
+        body = _build_close_im_payload(payload)
+        logger.info(f"Resolving IM from zabbix - transaction {transaction.id} - {body}")
+        return await self._finalize_incident_closure(body, transaction)
