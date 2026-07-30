@@ -1,24 +1,37 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.modules.bmc_helix.domain.entities import Transaction, TransactionStatus
+from src.modules.bmc_helix.domain.entities import (
+    OperationalCategorization,
+    ProductCategorization,
+    Transaction,
+    TransactionStatus,
+)
 from src.modules.bmc_helix.domain.exceptions import DomainException
-from src.modules.bmc_helix.infrastructure.models import TransactionModel
+from src.modules.bmc_helix.domain.repositories import (
+    CategorizationsRepositoryPort,
+    TransactionRepositoryPort,
+)
+from src.modules.bmc_helix.infrastructure.models import (
+    OperationalCategorizationModel,
+    ProductCategorizationModel,
+    TransactionModel,
+)
 
 
-class TransactionRepository:
+class TransactionRepository(TransactionRepositoryPort):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def get(self, transaction_id: int) -> Transaction | None:
         model = await self._session.get(TransactionModel, transaction_id)
-        return _to_entity(model) if model is not None else None
+        return _to_transaction_entity(model) if model is not None else None
 
     async def create(self, transaction: Transaction) -> Transaction:
-        model = _to_model(transaction)
+        model = _to_transaction_model(transaction)
         self._session.add(model)
         await self._session.flush()
         await self._session.refresh(model)
-        return _to_entity(model)
+        return _to_transaction_entity(model)
 
     async def update(self, transaction: Transaction) -> Transaction:
         if transaction.id is None:
@@ -34,10 +47,10 @@ class TransactionRepository:
         model.request = transaction.request
         await self._session.flush()
         await self._session.refresh(model)
-        return _to_entity(model)
+        return _to_transaction_entity(model)
 
 
-def _to_entity(model: TransactionModel) -> Transaction:
+def _to_transaction_entity(model: TransactionModel) -> Transaction:
     return Transaction(
         id=model.id,
         created_at=model.created_at,
@@ -51,7 +64,7 @@ def _to_entity(model: TransactionModel) -> Transaction:
     )
 
 
-def _to_model(transaction: Transaction) -> TransactionModel:
+def _to_transaction_model(transaction: Transaction) -> TransactionModel:
     return TransactionModel(
         service_code=transaction.service_code,
         event_id=transaction.event_id,
@@ -60,3 +73,34 @@ def _to_model(transaction: Transaction) -> TransactionModel:
         request=transaction.request,
         response=transaction.response,
     )
+
+
+class CategorizationsRepository(CategorizationsRepositoryPort):
+    def __init__(self, session: AsyncSession) -> None:
+        self._session = session
+
+    async def get_operational_categorization(
+        self, id: int
+    ) -> OperationalCategorization | None:
+        model = await self._session.get(OperationalCategorizationModel, id)
+        if not model:
+            return None
+        return OperationalCategorization(
+            categorization_tier_1=model.categorization_tier_1,
+            categorization_tier_2=model.categorization_tier_2,
+            categorization_tier_3=model.categorization_tier_3,
+            title=model.title,
+            assigned_group=model.assigned_group,
+            assignee=model.assignee,
+            description=model.description,
+        )
+
+    async def get_product_categorization(self, id: int) -> ProductCategorization | None:
+        model = await self._session.get(ProductCategorizationModel, id)
+        if not model:
+            return None
+        return ProductCategorization(
+            product_categorization_tier_1=model.product_categorization_tier_1,
+            product_categorization_tier_2=model.product_categorization_tier_2,
+            product_categorization_tier_3=model.product_categorization_tier_3,
+        )

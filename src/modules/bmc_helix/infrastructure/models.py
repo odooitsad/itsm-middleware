@@ -23,3 +23,26 @@ class TransactionModel(Base):
     incident_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
     request: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     response: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
+class ProductCategorizationModel(Base):
+    __tablename__ = "bmc_helix_product_categorizations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    product_categorization_tier_1: Mapped[str] = mapped_column(String(200))
+    product_categorization_tier_2: Mapped[str] = mapped_column(String(200))
+    product_categorization_tier_3: Mapped[str] = mapped_column(String(200))
+    product_name: Mapped[str] = mapped_column(String(200))
+
+
+class OperationalCategorizationModel(Base):
+    __tablename__ = "bmc_helix_operational_categorizations"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    categorization_tier_1: Mapped[str] = mapped_column(String(200))
+    categorization_tier_2: Mapped[str] = mapped_column(String(200))
+    categorization_tier_3: Mapped[str] = mapped_column(String(200))
+    title: Mapped[str] = mapped_column(String(300))
+    assigned_group: Mapped[str] = mapped_column(String(100))
+    assignee: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str] = mapped_column(String(5000))
