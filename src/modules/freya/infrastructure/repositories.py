@@ -1,3 +1,4 @@
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.modules.freya.domain.entities import IMStatus, Transaction, TransactionStatus
@@ -12,6 +13,13 @@ class TransactionRepository(TransactionRepositoryPort):
 
     async def get(self, transaction_id: int) -> Transaction | None:
         model = await self._session.get(TransactionModel, transaction_id)
+        return _to_entity(model) if model is not None else None
+
+    async def get_by_im_id(self, im_id: str) -> Transaction | None:
+        result = await self._session.execute(
+            select(TransactionModel).where(TransactionModel.im_id == im_id)
+        )
+        model = result.scalar_one_or_none()
         return _to_entity(model) if model is not None else None
 
     async def create(self, transaction: Transaction) -> Transaction:
