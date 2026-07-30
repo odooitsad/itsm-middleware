@@ -3,7 +3,13 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, Field, field_validator
 
-from src.modules.freya.domain.entities import CloseIMInput, CreateIMInput, UpdateIMInput
+from src.core.base_schemas import ZabbixBase, ZabbixEventUrgency
+from src.core.utils.date_utils import add_settings_timezone, now_with_settings_timezone
+from src.modules.freya.domain.entities import (
+    CloseIMInput,
+    CreateIMInput,
+    UpdateIMInput,
+)
 
 
 def _clean_list_field(value: str | list[str]) -> list[str]:
@@ -119,3 +125,51 @@ class CloseIMRequest(BaseModel):
 class IMResponse(BaseModel):
     detail: str
     im: str | None = Field(None, serialization_alias="incident_id")
+
+
+ZABBIX_URGENCY_TO_FREYA_URGENCY: dict[ZabbixEventUrgency, str] = {
+    ZabbixEventUrgency.HIGH: "1",
+    ZabbixEventUrgency.MEDIUM: "2",
+    ZabbixEventUrgency.LOW: "3",
+}
+
+
+class ZabbixEvent(ZabbixBase):
+    affected_ci: str | None = Field(None, description="Affected service code")
+    ci_is_operational: bool | None = True
+    city: str = Field("Not defined")
+    ip_wan: str = Field(description="T-shoot IP WAN")
+    provider: str = Field("Not defined", description="Secondary link")
+    run_tshoot: bool = False
+    service_type: str = Field("Not defined", examples=["Inhouse", "ATM"])
+    state_link: str = Field("Not defined", description="Secondary link state")
+    state_service: str = Field("Not defined", examples=["Caída parcial", "Caída total"])
+    transaction_id: int | None = Field(None, description="DB transaction id")
+
+    def to_create_im_input(self) -> CreateIMInput:
+        start_date = self.start_date.replace(".", "-")
+        return CreateIMInput(
+            area=self.state_service,
+            affected_ci=self.affected_ci or "Not defined",
+            category="incident",
+            ci_is_operational=self.ci_is_operational or True,
+            description=[self.description],
+            event_id=self.event_id,
+            impact=ZABBIX_URGENCY_TO_FREYA_URGENCY[self.urgency],
+            init_service=add_settings_timezone(start_date),
+            origin="3",
+            sub_category="failure",
+            title=self.title,
+            urgency=ZABBIX_URGENCY_TO_FREYA_URGENCY[self.urgency],
+        )
+
+    def to_close_im_body(self) -> CloseIMInput:
+        if self.end_date is None:
+            end_date = now_with_settings_timezone()
+        else:
+            end_date = self.end_date.replace(".", "-")
+            end_date = add_settings_timezone(end_date)
+        return CloseIMInput(
+            im_id="",
+            service_end_date=end_date,
+        )
