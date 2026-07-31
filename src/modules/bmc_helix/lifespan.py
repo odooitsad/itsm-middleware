@@ -7,7 +7,11 @@ from src.core.config import get_settings
 from src.core.database.base import Base
 from src.core.logger import get_logger
 from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
-from src.modules.bmc_helix.infrastructure.models import TransactionModel
+from src.modules.bmc_helix.infrastructure.models import (
+    OperationalCategorizationModel,
+    ProductCategorizationModel,
+    TransactionModel,
+)
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -24,7 +28,11 @@ async def bmc_helix_lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         await conn.run_sync(
             lambda sync_conn: Base.metadata.create_all(
                 sync_conn,
-                tables=[TransactionModel.__table__],  # type: ignore[arg-type]
+                tables=[
+                    TransactionModel.__table__,
+                    OperationalCategorizationModel.__table__,
+                    ProductCategorizationModel.__table__,
+                ],  # type: ignore[arg-type]
             )
         )
     logger.info("BMC Helix table ensured")

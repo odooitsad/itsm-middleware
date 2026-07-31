@@ -99,8 +99,10 @@ def _parse_bmc_errors(response: HttpResponse) -> list[BmcHelixError]:
                 )
                 for item in data
             ]
-    except Exception:
-        logger.warning("Failed to parse BMC Helix error response: %s", response.text)
+    except Exception as exc:
+        logger.warning(
+            "Failed to parse BMC Helix error response: %s", response.text, exc_info=exc
+        )
     return []
 
 
@@ -112,23 +114,10 @@ _INCIDENT_FIELDS = (
     "Product Categorization Tier 3,Product Name"
 )
 
-# BMC Helix fixed fields — injected into every incident payload.
-_BMC_DEFAULTS: dict[str, str] = {
-    "Company": "CENIT",
-    "Direct Contact First Name": "Integracion",
-    "Direct Contact Last Name": "Datasmart",
-    "First_Name": "Integracion",
-    "Last_Name": "Datasmart",
-    "Reported Source": "Self Service",
-    "Status": "Assigned",
-    "z1D_Action": "CREATE",
-}
-
 
 def _to_bmc_payload(incident: CreateIncidentInput) -> dict:
     """Map a domain CreateIncidentInput to the BMC Helix REST API payload."""
     return {
-        **_BMC_DEFAULTS,
         "Assigned Group": incident.assigned_group,
         "Assigned Support Company": incident.assigned_support_company,
         "Assigned Support Organization": incident.assigned_support_organization,
@@ -136,15 +125,23 @@ def _to_bmc_payload(incident: CreateIncidentInput) -> dict:
         "Categorization Tier 1": incident.categorization_tier_1,
         "Categorization Tier 2": incident.categorization_tier_2,
         "Categorization Tier 3": incident.categorization_tier_3,
-        "Description": incident.description,
-        "Detailed_Decription": incident.detailed_description,
+        "Company": incident.company,
+        "Description": incident.title,
+        "Detailed_Decription": incident.description,
+        "Direct Contact First Name": incident.direct_contact_first_name,
+        "Direct Contact Last Name": incident.direct_contact_last_name,
+        "First_Name": incident.first_name,
         "Impact": incident.impact,
+        "Last_Name": incident.last_name,
         "Manufacturer": incident.manufacturer,
         "Product Categorization Tier 1": incident.product_categorization_tier_1,
         "Product Categorization Tier 2": incident.product_categorization_tier_2,
         "Product Categorization Tier 3": incident.product_categorization_tier_3,
-        "Urgency": incident.urgency,
+        "Reported Source": incident.reported_source,
         "Service_Type": incident.service_type,
+        "Status": incident.status,
+        "Urgency": incident.urgency,
+        "z1D_Action": incident.action,
     }
 
 

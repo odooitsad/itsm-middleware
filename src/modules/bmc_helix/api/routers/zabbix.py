@@ -11,9 +11,5 @@ router = APIRouter()
 
 @router.post("", response_model=CreateIncidentResponse, status_code=201)
 async def create_incident(payload: ZabbixEvent, create_incident: CreateIncidentDep):
-    created_incident = await create_incident.execute(
-        payload.to_input(),
-        service_code=payload.host_name,
-        event_id=payload.event_id,
-    )
+    created_incident = await create_incident.execute_from_zabbix(payload.to_input())
     return created_incident

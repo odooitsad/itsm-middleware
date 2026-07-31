@@ -3,7 +3,10 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from src.core.base_schemas import ZabbixBase, ZabbixEventUrgency
-from src.modules.bmc_helix.domain.entities import CreateIncidentInput
+from src.modules.bmc_helix.domain.entities import (
+    CreateIncidentInput,
+    CreateIncidentInputZabbix,
+)
 
 
 class CreateIncidentRequest(BaseModel):
@@ -35,11 +38,11 @@ class CreateIncidentRequest(BaseModel):
         serialization_alias="Categorization Tier 3",
         examples=["Disponibilidad"],
     )
-    description: str = Field(
+    title: str = Field(
         serialization_alias="Description",
         examples=["PR_Indisponibilidad_OBC_LAN_SW_(equipo y estación)"],
     )
-    detailed_description: str = Field(
+    description: str = Field(
         serialization_alias="Detailed_Decription",
         examples=["PR_Indisponibilidad_OBC_LAN_SW_(equipo y estación)"],
     )
@@ -93,8 +96,8 @@ class CreateIncidentRequest(BaseModel):
             categorization_tier_1=self.categorization_tier_1,
             categorization_tier_2=self.categorization_tier_2,
             categorization_tier_3=self.categorization_tier_3,
+            title=self.title,
             description=self.description,
-            detailed_description=self.detailed_description,
             impact=self.impact,
             manufacturer=self.manufacturer,
             product_categorization_tier_1=self.product_categorization_tier_1,
@@ -146,83 +149,16 @@ URGENCY_TO_BMC_IMPACT: dict[ZabbixEventUrgency, str] = {
 
 
 class ZabbixEvent(ZabbixBase):
-    assigned_group: str = Field(
-        "Sop_Telco",
-        examples=["Sop_Telco"],
-        max_length=100,
-    )
-    assigned_support_company: str = Field(
-        "CENIT",
-        examples=["CENIT"],
-        max_length=100,
-    )
-    assigned_support_organization: str = Field(
-        "Soporte Tecnico",
-        examples=["Soporte Tecnico"],
-        max_length=100,
-    )
-    assignee: str = Field(
-        "Jesus Alberto de La Hoz Jimenez",
-        examples=["Jesus Alberto de La Hoz Jimenez"],
-        max_length=100,
-    )
-    categorization_tier_1: str = Field(
-        "",
-        examples=["Redes y telecomunicaciones"],
-        max_length=100,
-    )
-    categorization_tier_2: str = Field(
-        "",
-        examples=["Lan"],
-        max_length=100,
-    )
-    categorization_tier_3: str = Field(
-        "",
-        examples=["Disponibilidad"],
-        max_length=100,
-    )
-    manufacturer: str = Field(
-        "CENIT",
-        examples=["CENIT"],
-        max_length=100,
-    )
-    product_categorization_tier_1: str = Field(
-        "",
-        examples=["Redes y telecomunicaciones"],
-        max_length=100,
-    )
-    product_categorization_tier_2: str = Field(
-        "",
-        examples=["Lan"],
-        max_length=100,
-    )
-    product_categorization_tier_3: str = Field(
-        "",
-        examples=["Switch"],
-        max_length=100,
-    )
-    service_type: str = Field(
-        "User Service Request",
-        examples=["User Service Request"],
-        max_length=100,
-    )
+    product_categorization_id: int
+    operational_categorization_id: int
 
-    def to_input(self) -> CreateIncidentInput:
-        return CreateIncidentInput(
-            description=self.title,
-            detailed_description=self.description,
+    def to_input(self) -> CreateIncidentInputZabbix:
+        return CreateIncidentInputZabbix(
+            event_id=self.event_id,
             impact=URGENCY_TO_BMC_IMPACT[self.urgency],
+            operational_categorization_id=self.operational_categorization_id,
+            product_categorization_id=self.product_categorization_id,
+            service_code=self.host_name,
+            title=self.title,
             urgency=URGENCY_TO_BMC_URGENCY[self.urgency],
-            service_type=self.service_type,
-            categorization_tier_1=self.categorization_tier_1,
-            categorization_tier_2=self.categorization_tier_2,
-            categorization_tier_3=self.categorization_tier_3,
-            product_categorization_tier_1=self.product_categorization_tier_1,
-            product_categorization_tier_2=self.product_categorization_tier_2,
-            product_categorization_tier_3=self.product_categorization_tier_3,
-            manufacturer=self.manufacturer,
-            assigned_support_company=self.assigned_support_company,
-            assigned_support_organization=self.assigned_support_organization,
-            assigned_group=self.assigned_group,
-            assignee=self.assignee,
         )

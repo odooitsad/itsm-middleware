@@ -7,7 +7,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.database.session import DatabaseAdapter
 from src.modules.bmc_helix.application.use_cases import CreateIncidentUseCase
 from src.modules.bmc_helix.infrastructure.adapters import BmcHelixAdapter
-from src.modules.bmc_helix.infrastructure.repositories import TransactionRepository
+from src.modules.bmc_helix.infrastructure.repositories import (
+    CategorizationsRepository,
+    TransactionRepository,
+)
 
 
 async def get_db_session(request: Request) -> AsyncGenerator[AsyncSession, None]:
@@ -28,12 +31,24 @@ TransactionRepoDep = Annotated[
 ]
 
 
+def get_categorizations_repository(session: DbSessionDep) -> CategorizationsRepository:
+    return CategorizationsRepository(session)
+
+
+CategorizationsRepoDep = Annotated[
+    CategorizationsRepository, Depends(get_categorizations_repository)
+]
+
+
 def get_create_incident_use_case(
     request: Request,
-    repository: TransactionRepoDep,
+    transaction_repository: TransactionRepoDep,
+    categorization_repository: CategorizationsRepoDep,
 ) -> CreateIncidentUseCase:
     adapter: BmcHelixAdapter = request.app.state.bmc_helix
-    return CreateIncidentUseCase(adapter, repository)
+    return CreateIncidentUseCase(
+        adapter, transaction_repository, categorization_repository
+    )
 
 
 CreateIncidentDep = Annotated[
