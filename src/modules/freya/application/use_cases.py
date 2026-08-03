@@ -8,7 +8,7 @@ from src.modules.freya.domain.entities import (
     TransactionStatus,
     UpdateIMInput,
 )
-from src.modules.freya.domain.exceptions import FreyaClientError
+from src.modules.freya.domain.exceptions import DomainException, FreyaClientError
 from src.modules.freya.domain.ports import FreyaPort
 from src.modules.freya.domain.repositories import TransactionRepositoryPort
 
@@ -58,6 +58,14 @@ def _build_create_transaction(payload: dict, host_id: int | None) -> Transaction
     )
 
 
+def _extract_im_number(result: str) -> str | None:
+    im_index = result.find("IM")
+    if im_index == -1:
+        logger.warning(f"Unexpected response while creating IM: {result}")
+        raise FreyaClientError("Unexpected response while creating the IM")
+    return result[im_index:]
+
+
 class FreyaUseCase:
     def __init__(
         self, adapter: FreyaPort, repository: TransactionRepositoryPort
@@ -81,14 +89,9 @@ class FreyaUseCase:
             await self._transaction.update(transaction)
             raise
 
-        im_index = result.find("IM")
-        if im_index == -1:
-            logger.warning(f"Unexpected response while creating IM: {result}")
-            raise FreyaClientError("Unexpected response while creating the IM")
-
-        im = result[im_index:]
+        im = _extract_im_number(result)
         logger.info(f"IM created: {im} - CI: {payload.affected_ci}")
-        im_result = IMResult(detail="IM created successfully", im=im)
+        im_result = IMResult(detail="Incident created successfully", im=im)
 
         transaction.status = TransactionStatus.SUCCESS
         transaction.status_im = IMStatus.OPEN
@@ -97,6 +100,50 @@ class FreyaUseCase:
         await self._transaction.update(transaction)
         return im_result
 
+    async def create_pending_im(
+        self, payload: CreateIMInput, host_id: int | None = None
+    ) -> int:
+        """Persist a PENDING transaction and return its id without calling Freya."""
+        body = _build_create_im_payload(payload)
+        transaction = await self._transaction.create(
+            _build_create_transaction(body, host_id)
+        )
+        logger.info(f"Pending IM transaction created: {transaction.id}")
+        if transaction.id is None:
+            raise DomainException("Transaction was created without an id.")
+        return transaction.id
+
+    async def process_pending_im(
+        self, transaction_id: int, payload: CreateIMInput
+    ) -> None:
+        """Call Freya for a transaction created via create_pending_im.
+
+        Meant to run as a fire-and-forget background task, so errors are
+        logged and recorded on the transaction rather than raised.
+        """
+        transaction = await self._transaction.get(transaction_id)
+        if transaction is None:
+            logger.error("Transaction %s not found for pending IM", transaction_id)
+            return
+
+        body = _build_create_im_payload(payload)
+        try:
+            result = await self._adapter.send_post_request("CreateIM", body)
+        except Exception as exc:  # noqa
+            transaction.status = TransactionStatus.ERROR
+            transaction.response = {"error": str(exc)}
+            await self._transaction.update(transaction)
+            logger.error("Transaction %s - IM creation failed: %s", transaction_id, exc)
+            return
+
+        im = _extract_im_number(result)
+        logger.info(f"IM created: {im} - transaction {transaction_id}")
+        transaction.status = TransactionStatus.SUCCESS
+        transaction.status_im = IMStatus.OPEN
+        transaction.im_id = im
+        transaction.response = {"detail": "IM created successfully", "im": im}
+        await self._transaction.update(transaction)
+
     async def update_im(self, payload: UpdateIMInput) -> IMResult:
         body = _build_update_im_payload(payload)
         im = payload.existing_im
@@ -104,16 +151,6 @@ class FreyaUseCase:
         result = await self._adapter.send_post_request("UpdateIm", body)
         logger.info(f"Working note added to {im}: {payload.working_note[0][:200]}...")
         return IMResult(detail=result, im=im)
-
-    async def _finalize_incident_closure(
-        self, body: dict, transaction: Transaction
-    ) -> IMResult:
-        im_id = body["IdIm"]
-        result = await self._adapter.send_post_request("ResolvedIM", body)
-        transaction.status_im = IMStatus.CLOSED
-        await self._transaction.update(transaction)
-        logger.info(f"{im_id} resolved")
-        return IMResult(detail=result, im=im_id)
 
     async def close_im(self, payload: CloseIMInput) -> IMResult:
         im_id = payload.im_id
@@ -139,3 +176,13 @@ class FreyaUseCase:
         body = _build_close_im_payload(payload)
         logger.info(f"Resolving IM from zabbix - transaction {transaction.id} - {body}")
         return await self._finalize_incident_closure(body, transaction)
+
+    async def _finalize_incident_closure(
+        self, body: dict, transaction: Transaction
+    ) -> IMResult:
+        im_id = body["IdIm"]
+        result = await self._adapter.send_post_request("ResolvedIM", body)
+        transaction.status_im = IMStatus.CLOSED
+        await self._transaction.update(transaction)
+        logger.info(f"{im_id} resolved")
+        return IMResult(detail=result, im=im_id)

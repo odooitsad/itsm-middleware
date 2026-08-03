@@ -148,6 +148,7 @@ class ZabbixEvent(ZabbixBase):
 
     def to_create_im_input(self) -> CreateIMInput:
         start_date = self.start_date.replace(".", "-")
+        start_date = add_settings_timezone(start_date)
         return CreateIMInput(
             area=self.state_service,
             affected_ci=self.affected_ci or "Not defined",
@@ -163,7 +164,7 @@ class ZabbixEvent(ZabbixBase):
             urgency=ZABBIX_URGENCY_TO_FREYA_URGENCY[self.urgency],
         )
 
-    def to_close_im_body(self) -> CloseIMInput:
+    def to_close_im_input(self) -> CloseIMInput:
         if self.end_date is None:
             end_date = now_with_settings_timezone()
         else:
@@ -173,3 +174,8 @@ class ZabbixEvent(ZabbixBase):
             im_id="",
             service_end_date=end_date,
         )
+
+
+class ZabbixCreationIMResponse(BaseModel):
+    detail: str = "Incident creation in progress"
+    transaction_id: int = Field(description="DB transaction id")
