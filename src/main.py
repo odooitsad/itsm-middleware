@@ -15,6 +15,9 @@ from src.modules.bmc_helix.api.exception_handlers import (
 )
 from src.modules.bmc_helix.api.routers.main import bmc_helix_router
 from src.modules.bmc_helix.lifespan import bmc_helix_lifespan
+from src.modules.freya.api.exception_handlers import register_freya_exception_handlers
+from src.modules.freya.api.routers.main import freya_router
+from src.modules.freya.lifespan import freya_lifespan
 from src.modules.its_helpdesk.api.exception_handlers import (
     register_its_helpdesk_exception_handlers,
 )
@@ -47,7 +50,11 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         app.state.db = db
         logger.info("Database connection pool established")
 
-        async with bmc_helix_lifespan(app), its_helpdesk_lifespan(app):
+        async with (
+            bmc_helix_lifespan(app),
+            its_helpdesk_lifespan(app),
+            freya_lifespan(app),
+        ):
             yield
     except Exception as e:
         logger.exception(f"Error during application startup: {e}")
@@ -76,3 +83,7 @@ if settings.bmc_helix_enabled:
 if settings.its_helpdesk_enabled:
     app.include_router(its_helpdesk_router)
     register_its_helpdesk_exception_handlers(app)
+
+if settings.freya_enabled:
+    app.include_router(freya_router)
+    register_freya_exception_handlers(app)

@@ -31,6 +31,7 @@ class TransactionRepository(TransactionRepositoryPort):
         self._session.add(model)
         await self._session.flush()
         await self._session.refresh(model)
+        await self._session.commit()
         return _to_transaction_entity(model)
 
     async def update(self, transaction: Transaction) -> Transaction:
@@ -47,6 +48,7 @@ class TransactionRepository(TransactionRepositoryPort):
         model.request = transaction.request
         await self._session.flush()
         await self._session.refresh(model)
+        await self._session.commit()
         return _to_transaction_entity(model)
 
 
