@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         ):
             yield
     except Exception as e:
-        logger.exception(f"Error during application startup: {e}")
+        logger.critical(f"Error during application startup: {e}")
         raise
     finally:
         await db.disconnect()
