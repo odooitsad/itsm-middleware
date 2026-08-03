@@ -1,3 +1,5 @@
+import json
+
 from src.core.clients.http import HttpClient, HttpResponse
 from src.core.logger import get_logger
 from src.modules.its_helpdesk.domain.entities import (
@@ -16,6 +18,7 @@ def _jsonrpc_body(jsonrpc_id: int, params: dict) -> dict:
     return {"jsonrpc": "2.0", "method": "call", "id": jsonrpc_id, "params": params}
 
 
+# TODO: Consider getting data from DB
 def _create_input_to_odoo_params(ticket: CreateTicketInput) -> dict:
     return {
         "email_subject": ticket.email_subject,
@@ -124,7 +127,10 @@ class ItsHelpdeskAdapter(ItsHelpdeskPort):
     async def create_ticket(self, payload: CreateTicketInput) -> CreateTicketOut:
         await self.authenticate()
         body = _jsonrpc_body(self._jsonrpc_id, _create_input_to_odoo_params(payload))
-        logger.info("Creating ticket in ITS Helpdesk — payload params: %s", payload)
+        logger.info(
+            "Creating ticket in ITS Helpdesk — payload params: %s",
+            json.dumps(body, indent=2),
+        )
 
         response = await self._client.post("/tickets/create", json=body)
         self._validate_response(response, action="ticket creation")
@@ -141,7 +147,9 @@ class ItsHelpdeskAdapter(ItsHelpdeskPort):
     async def close_ticket(self, payload: CloseTicketInput) -> CloseTicketOut:
         await self.authenticate()
         body = _jsonrpc_body(self._jsonrpc_id, _close_input_to_odoo_params(payload))
-        logger.info("Closing ticket in ITS Helpdesk — params: %s", body)
+        logger.info(
+            "Closing ticket in ITS Helpdesk — params: %s", json.dumps(body, indent=2)
+        )
 
         response = await self._client.post("/ticket/close", json=body)
         self._validate_response(response, action="ticket closure")
