@@ -24,11 +24,6 @@ class ZabbixBase(BaseModel):
         examples=["123456789"],
         max_length=50,
     )
-    event_value: str = Field(
-        examples=["1"],
-        description="Value that defines start(1) or end(0) of the event",
-        max_length=1,
-    )
     host_id: int = Field(
         examples=[10711],
     )

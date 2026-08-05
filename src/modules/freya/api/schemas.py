@@ -135,7 +135,9 @@ ZABBIX_URGENCY_TO_FREYA_URGENCY: dict[ZabbixEventUrgency, str] = {
 
 
 class ZabbixEvent(ZabbixBase):
-    affected_ci: str | None = Field(None, description="Affected service code")
+    affected_ci: str | None = Field(
+        None, description="Affected service code", examples=["GRH0931"]
+    )
     ci_is_operational: bool | None = True
     city: str = Field("Not defined")
     ip_wan: str = Field(description="T-shoot IP WAN")
