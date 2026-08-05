@@ -2,9 +2,10 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from src.constans import DESCRIPTION, PROJECT_NAME
+from src.core.authorization import verify_api_key
 from src.core.base_exception_handlers import register_base_exception_handlers
 from src.core.config import get_settings
 from src.core.database.session import DatabaseAdapter
@@ -73,17 +74,17 @@ app = FastAPI(
 )
 
 
-app.include_router(health_router)
+app.include_router(health_router, dependencies=[Depends(verify_api_key)])
 register_base_exception_handlers(app)
 
 if settings.bmc_helix_enabled:
-    app.include_router(bmc_helix_router)
+    app.include_router(bmc_helix_router, dependencies=[Depends(verify_api_key)])
     register_bmc_helix_exception_handlers(app)
 
 if settings.its_helpdesk_enabled:
-    app.include_router(its_helpdesk_router)
+    app.include_router(its_helpdesk_router, dependencies=[Depends(verify_api_key)])
     register_its_helpdesk_exception_handlers(app)
 
 if settings.freya_enabled:
-    app.include_router(freya_router)
+    app.include_router(freya_router, dependencies=[Depends(verify_api_key)])
     register_freya_exception_handlers(app)

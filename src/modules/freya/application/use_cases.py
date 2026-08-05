@@ -80,7 +80,7 @@ class FreyaUseCase:
         transaction = await self._transaction.create(
             _build_create_transaction(body, host_id)
         )
-        logger.info(f"Creating IM - transaction {transaction.id}: {body}")
+        logger.info(f"Transaction {transaction.id} - Creating IM: {body}")
         try:
             result = await self._adapter.send_post_request("CreateIM", body)
         except Exception as exc:
