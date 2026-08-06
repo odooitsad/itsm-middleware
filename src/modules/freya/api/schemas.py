@@ -150,7 +150,6 @@ class ZabbixEvent(ZabbixBase):
 
     def to_create_im_input(self) -> CreateIMInput:
         start_date = self.start_date.replace(".", "-")
-        start_date = add_settings_timezone(start_date)
         return CreateIMInput(
             area=self.state_service,
             affected_ci=self.affected_ci or "Not defined",

@@ -17,7 +17,7 @@ class ZabbixBase(BaseModel):
     )
     end_date: str | None = Field(
         None,
-        examples=["2026.02.18T20:31:24"],
+        examples=["2026.08.05T20:31:24"],
         max_length=50,
     )
     event_id: str = Field(
@@ -32,7 +32,7 @@ class ZabbixBase(BaseModel):
         max_length=100,
     )
     start_date: str = Field(
-        examples=["2026.02.18T20:31:24"],
+        examples=["2026.08.05T12:31:24"],
         max_length=50,
     )
     title: str = Field(
