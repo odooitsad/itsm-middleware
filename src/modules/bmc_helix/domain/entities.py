@@ -63,13 +63,14 @@ class CreateIncidentInput(OperationalCategorization, ProductCategorization):
     last_name: str = "Datasmart"
     manufacturer: str = "CENIT"
     reported_source: str = "Self Service"
-    service_type: str = "User Service Request"
+    service_type: str = "Infrastructure Event"
     status: str = "Assigned"
     urgency: str
 
 
 @dataclass
 class CreateIncidentInputZabbix:
+    base_description: str
     event_id: str
     impact: str
     operational_categorization_id: int
@@ -80,6 +81,7 @@ class CreateIncidentInputZabbix:
 
     def to_input_dict(self) -> dict:
         return {
+            "base_description": self.base_description,
             "impact": self.impact,
             "title": self.title,
             "urgency": self.urgency,

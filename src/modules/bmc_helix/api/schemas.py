@@ -154,6 +154,7 @@ class ZabbixEvent(ZabbixBase):
 
     def to_input(self) -> CreateIncidentInputZabbix:
         return CreateIncidentInputZabbix(
+            base_description=self.description,
             event_id=self.event_id,
             impact=URGENCY_TO_BMC_IMPACT[self.urgency],
             operational_categorization_id=self.operational_categorization_id,

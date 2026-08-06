@@ -15,6 +15,23 @@ from src.modules.bmc_helix.domain.repositories import (
 )
 
 
+def _build_create_incident_input_from_zabbix(
+    payload: CreateIncidentInputZabbix,
+    operationat_cat: dict,
+    product_cat: dict,
+) -> CreateIncidentInput:
+    payload_dict = payload.to_input_dict()
+    description = payload_dict.pop("base_description") + operationat_cat.pop(
+        "description", ""
+    )
+    return CreateIncidentInput(
+        description=description,
+        **operationat_cat,
+        **product_cat,
+        **payload_dict,
+    )
+
+
 class CreateIncidentUseCase:
     def __init__(
         self,
@@ -54,10 +71,8 @@ class CreateIncidentUseCase:
             raise IncidentCreationError(
                 f"Product categorization with id {product_cat_id} not found."
             )
-        body = CreateIncidentInput(
-            **operationat_cat.to_input_dict(),
-            **dataclasses.asdict(product_cat),
-            **payload.to_input_dict(),
+        body = _build_create_incident_input_from_zabbix(
+            payload, operationat_cat.to_input_dict(), dataclasses.asdict(product_cat)
         )
         transaction = await self._transaction_repo.create(
             Transaction(
