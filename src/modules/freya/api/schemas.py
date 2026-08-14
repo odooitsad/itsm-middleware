@@ -128,6 +128,7 @@ class IMResponse(BaseModel):
 
 
 ZABBIX_URGENCY_TO_FREYA_URGENCY: dict[ZabbixEventUrgency, str] = {
+    ZabbixEventUrgency.CRITICAL: "1",
     ZabbixEventUrgency.HIGH: "1",
     ZabbixEventUrgency.MEDIUM: "2",
     ZabbixEventUrgency.LOW: "3",
