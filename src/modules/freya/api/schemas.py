@@ -152,7 +152,7 @@ class ZabbixEvent(ZabbixBase):
     def to_create_im_input(self) -> CreateIMInput:
         start_date = self.start_date.replace(".", "-")
         return CreateIMInput(
-            area=self.state_service,
+            area="No Hay Navegación",
             affected_ci=self.affected_ci or "Not defined",
             category="incident",
             ci_is_operational=self.ci_is_operational or True,
