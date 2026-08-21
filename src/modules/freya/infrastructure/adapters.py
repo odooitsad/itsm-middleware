@@ -3,7 +3,7 @@ from src.core.exceptions import HttpClientError
 from src.core.logger import get_logger
 from src.modules.freya.domain.entities import AuthToken, FreyaResponse
 from src.modules.freya.domain.exceptions import FreyaClientError
-from src.modules.freya.domain.ports import FreyaPort
+from src.modules.freya.domain.ports import FreyaPort, TroubleshootingPort
 
 logger = get_logger(__name__)
 
@@ -113,3 +113,32 @@ class FreyaAdapter(FreyaPort):
             raise FreyaClientError(f"Unexpected 'results' format: {result}")
 
         return result
+
+
+class Troubleshooting(TroubleshootingPort):
+    def __init__(self, client: HttpClient):
+        self._client = client
+
+    @classmethod
+    def build(cls, base_url: str, timeout: float, token: str) -> "Troubleshooting":
+        headers = {"X-Access-Token": token}
+        client = HttpClient(
+            base_url=base_url, timeout=timeout, headers=headers, verify=False
+        )
+        return cls(client)
+
+    async def stop(self) -> None:
+        await self._client.close()
+
+    async def execute(self, im_id: str, ip_wan: str):
+        payload = {"im": im_id, "ip_wan": ip_wan}
+        logger.info(f"Triggering T-shoot for {ip_wan} - IM: {im_id}")
+        response = await self._client.post("parallel-th/exec", json=payload)
+        task_id = response.json.get("task_id")
+        logger.info(f"T-shoot executed successfully {task_id}")
+
+    async def ping_last_mile(self, im_id: str, service_code: str):
+        payload = {"im": im_id, "hostname": service_code}
+        logger.info(f"Running last mile PING for Service: {service_code} - IM: {im_id}")
+        response = await self._client.post("parallel-th/exec/ping-um", json=payload)
+        logger.info(f"PING UM executed successfully {response}")
