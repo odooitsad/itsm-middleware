@@ -20,7 +20,9 @@ def get_freya_use_case(
     request: Request, repository: TransactionRepoDep
 ) -> FreyaUseCase:
     adapter = request.app.state.freya
-    return FreyaUseCase(adapter, repository)
+    notifier = request.app.state.notifier
+    troubleshooting = request.app.state.troubleshooting
+    return FreyaUseCase(adapter, notifier, repository, troubleshooting)
 
 
 FreyaUseCaseDep = Annotated[FreyaUseCase, Depends(get_freya_use_case)]
@@ -30,7 +32,9 @@ def get_freya_from_zabbix_use_case(
     request: Request, repository: TransactionRepoDep
 ) -> FreyaFromZabbixUseCase:
     adapter = request.app.state.freya
-    return FreyaFromZabbixUseCase(adapter, repository)
+    notifier = request.app.state.notifier
+    troubleshooting = request.app.state.troubleshooting
+    return FreyaFromZabbixUseCase(adapter, notifier, repository, troubleshooting)
 
 
 FreyaFromZabbixUseCaseDep = Annotated[

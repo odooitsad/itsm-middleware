@@ -19,7 +19,10 @@ async def create_incident(
     create_im_input = event.to_create_im_input()
     transaction_id = await use_case.create_pending_im(create_im_input, event.host_id)
     background_tasks.add_task(
-        use_case.process_pending_im, transaction_id, create_im_input
+        use_case.process_pending_im,
+        transaction_id,
+        create_im_input,
+        event.model_dump(),
     )
     return ZabbixCreationIMResponse(transaction_id=transaction_id)
 
@@ -33,5 +36,7 @@ async def close_incident(
     if not transaction_id:
         raise HTTPException(status_code=400, detail="transaction id es required")
     close_im_input = event.to_close_im_input()
-    result = await use_case.close_im_from_zabbix(close_im_input, transaction_id)
+    result = await use_case.close_im_from_zabbix(
+        close_im_input, transaction_id, event.model_dump()
+    )
     return result

@@ -1,4 +1,11 @@
+from dataclasses import asdict
+
 from src.core.logger import get_logger
+from src.modules.freya.application.notification_templates import (
+    build_im_closed_template,
+    build_im_created_success_template,
+    build_im_creation_failure_template,
+)
 from src.modules.freya.domain.entities import (
     CloseIMInput,
     CreateIMInput,
@@ -9,7 +16,11 @@ from src.modules.freya.domain.entities import (
     UpdateIMInput,
 )
 from src.modules.freya.domain.exceptions import DomainException, FreyaClientError
-from src.modules.freya.domain.ports import FreyaPort
+from src.modules.freya.domain.ports import (
+    FreyaPort,
+    NotificationPort,
+    TroubleshootingPort,
+)
 from src.modules.freya.domain.repositories import TransactionRepositoryPort
 
 logger = get_logger(__name__)
@@ -58,7 +69,7 @@ def _build_create_transaction(payload: dict, host_id: int | None) -> Transaction
     )
 
 
-def _extract_im_number(result: str) -> str | None:
+def _extract_im_number(result: str) -> str:
     im_index = result.find("IM")
     if im_index == -1:
         logger.warning(f"Unexpected response while creating IM: {result}")
@@ -68,10 +79,16 @@ def _extract_im_number(result: str) -> str | None:
 
 class FreyaBaseUseCase:
     def __init__(
-        self, adapter: FreyaPort, repository: TransactionRepositoryPort
+        self,
+        adapter: FreyaPort,
+        notifier: NotificationPort,
+        repository: TransactionRepositoryPort,
+        troubleshooting: TroubleshootingPort,
     ) -> None:
         self._adapter = adapter
+        self._notifier = notifier
         self._transaction = repository
+        self._troubleshooting = troubleshooting
 
     async def _finalize_incident_closure(
         self, body: dict, transaction: Transaction
@@ -149,7 +166,7 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
         return transaction.id
 
     async def process_pending_im(
-        self, transaction_id: int, payload: CreateIMInput
+        self, transaction_id: int, payload: CreateIMInput, zabbix_event_dict
     ) -> None:
         """Call Freya for a transaction created via create_pending_im.
 
@@ -169,18 +186,29 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
             transaction.status = TransactionStatus.ERROR
             transaction.response = {"error": str(exc)}
             await self._transaction.update(transaction)
+            template = build_im_creation_failure_template(**zabbix_event_dict)
+            await self._notifier.notify_via_telegram(template)
             return
 
         im = _extract_im_number(result)
         logger.info(f"IM created: {im} - transaction {transaction_id}")
+
         transaction.status = TransactionStatus.SUCCESS
         transaction.status_im = IMStatus.OPEN
         transaction.im_id = im
         transaction.response = {"detail": "IM created successfully", "im": im}
         await self._transaction.update(transaction)
 
+        if zabbix_event_dict.get("run_tshoot"):
+            await self._troubleshooting.execute(
+                im_id=im, ip_wan=zabbix_event_dict["ip_wan"]
+            )
+
+        template = build_im_created_success_template(**zabbix_event_dict, im_id=im)
+        await self._notifier.notify_via_telegram(template)
+
     async def close_im_from_zabbix(
-        self, payload: CloseIMInput, transaction_id: int
+        self, payload: CloseIMInput, transaction_id: int, zabbix_event_dict
     ) -> IMResult:
         transaction = await self._transaction.get(transaction_id)
         if transaction is None:
@@ -191,4 +219,6 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
         payload.im_id = transaction.im_id or ""
         body = _build_close_im_payload(payload)
         logger.info(f"Resolving IM from zabbix - transaction {transaction.id} - {body}")
+        template = build_im_closed_template(**zabbix_event_dict, **asdict(payload))
+        await self._notifier.notify_via_telegram(template)
         return await self._finalize_incident_closure(body, transaction)
