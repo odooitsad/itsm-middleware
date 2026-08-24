@@ -149,8 +149,12 @@ class ZabbixEvent(ZabbixBase):
     state_service: str = Field("Not defined", examples=["Caída parcial", "Caída total"])
     transaction_id: int | None = Field(None, description="DB transaction id")
 
+    @field_validator("start_date")
+    @classmethod
+    def validate_start_date(cls, v: str) -> str:
+        return add_settings_timezone(v.replace(".", "-"))
+
     def to_create_im_input(self) -> CreateIMInput:
-        start_date = self.start_date.replace(".", "-")
         return CreateIMInput(
             area="No Hay Navegación",
             affected_ci=self.affected_ci or "Not defined",
@@ -159,7 +163,7 @@ class ZabbixEvent(ZabbixBase):
             description=[self.description],
             event_id=self.event_id,
             impact=ZABBIX_URGENCY_TO_FREYA_URGENCY[self.urgency],
-            init_service=add_settings_timezone(start_date),
+            init_service=self.start_date,
             origin="3",
             sub_category="failure",
             title=self.title,
