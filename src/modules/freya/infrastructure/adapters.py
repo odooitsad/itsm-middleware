@@ -1,9 +1,15 @@
+import json
+
 from src.core.clients.http import HttpClient
 from src.core.exceptions import HttpClientError
 from src.core.logger import get_logger
 from src.modules.freya.domain.entities import AuthToken, FreyaResponse
 from src.modules.freya.domain.exceptions import FreyaClientError
-from src.modules.freya.domain.ports import FreyaPort, TroubleshootingPort
+from src.modules.freya.domain.ports import (
+    FreyaPort,
+    NotificationPort,
+    TroubleshootingPort,
+)
 
 logger = get_logger(__name__)
 
@@ -115,6 +121,45 @@ class FreyaAdapter(FreyaPort):
         return result
 
 
+class Notification(NotificationPort):
+    """
+    Best-effort adapter for sending fire-and-forget notifications.
+
+    Delivery failures are logged and swallowed so a notification outage never
+    interrupts the IM creation flow; the response body is not inspected.
+    """
+
+    def __init__(self, client: HttpClient) -> None:
+        self._client = client
+
+    @classmethod
+    def build(cls, base_url: str, timeout: float) -> "Notification":
+        client = HttpClient(base_url=base_url, timeout=timeout)
+        return cls(client)
+
+    async def stop(self) -> None:
+        await self._client.close()
+
+    async def notify_via_telegram(self, template: dict) -> None:
+        logger.info(
+            f"Sending notification via Telegram: {json.dumps(template, indent=2)}"
+        )
+        try:
+            await self._client.post("/send/telegram/", json=template)
+        except HttpClientError:
+            logger.warning("Notification delivery failed")
+
+
+class NullNotification(NotificationPort):
+    """No-op notifier used when a client has notifications disabled."""
+
+    async def stop(self) -> None:
+        pass
+
+    async def notify_via_telegram(self, template: dict) -> None:
+        pass
+
+
 class Troubleshooting(TroubleshootingPort):
     def __init__(self, client: HttpClient):
         self._client = client
@@ -133,12 +178,33 @@ class Troubleshooting(TroubleshootingPort):
     async def execute(self, im_id: str, ip_wan: str):
         payload = {"im": im_id, "ip_wan": ip_wan}
         logger.info(f"Triggering T-shoot for {ip_wan} - IM: {im_id}")
-        response = await self._client.post("parallel-th/exec", json=payload)
-        task_id = response.json.get("task_id")
-        logger.info(f"T-shoot executed successfully {task_id}")
+        try:
+            response = await self._client.post("/parallel-th/exec", json=payload)
+            task_id = response.json.get("task_id")
+            logger.info(f"T-shoot executed successfully {task_id}")
+        except HttpClientError:
+            logger.warning("T-shoot execution failed")
 
     async def ping_last_mile(self, im_id: str, service_code: str):
         payload = {"im": im_id, "hostname": service_code}
         logger.info(f"Running last mile PING for Service: {service_code} - IM: {im_id}")
-        response = await self._client.post("parallel-th/exec/ping-um", json=payload)
-        logger.info(f"PING UM executed successfully {response}")
+        try:
+            response = await self._client.post(
+                "/parallel-th/exec/ping-um", json=payload
+            )
+            logger.info(f"PING UM executed successfully {response}")
+        except HttpClientError:
+            logger.warning("PING UM execution failed")
+
+
+class NullTroubleshooting(TroubleshootingPort):
+    """No-op troubleshooting adapter used when a client has T-shooting disabled."""
+
+    async def stop(self) -> None:
+        pass
+
+    async def execute(self, im_id: str, ip_wan: str):
+        pass
+
+    async def ping_last_mile(self, im_id: str, service_code: str):
+        pass
