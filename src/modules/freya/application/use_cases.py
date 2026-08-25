@@ -72,7 +72,7 @@ def _build_create_transaction(payload: dict, host_id: int | None) -> Transaction
 def _extract_im_number(result: str) -> str:
     im_index = result.find("IM")
     if im_index == -1:
-        logger.warning(f"Unexpected response while creating IM: {result}")
+        logger.warning("Unexpected response while creating IM: %s", result)
         raise FreyaClientError("Unexpected response while creating the IM")
     return result[im_index:]
 
@@ -97,7 +97,7 @@ class FreyaBaseUseCase:
         result = await self._adapter.send_post_request("ResolvedIM", body)
         transaction.status_im = IMStatus.CLOSED
         await self._transaction.update(transaction)
-        logger.info(f"{im_id} resolved")
+        logger.info("%s resolved", im_id)
         return IMResult(detail=result, im=im_id)
 
 
@@ -109,7 +109,7 @@ class FreyaUseCase(FreyaBaseUseCase):
         transaction = await self._transaction.create(
             _build_create_transaction(body, host_id)
         )
-        logger.info(f"Transaction {transaction.id} - Creating IM: {body}")
+        logger.info("Transaction %s - Creating IM: %s", transaction.id, body)
         try:
             result = await self._adapter.send_post_request("CreateIM", body)
         except Exception as exc:
@@ -119,7 +119,7 @@ class FreyaUseCase(FreyaBaseUseCase):
             raise
 
         im = _extract_im_number(result)
-        logger.info(f"IM created: {im} - CI: {payload.affected_ci}")
+        logger.info("IM created: %s - CI: %s", im, payload.affected_ci)
         im_result = IMResult(detail="Incident created successfully", im=im)
 
         transaction.status = TransactionStatus.SUCCESS
@@ -132,20 +132,22 @@ class FreyaUseCase(FreyaBaseUseCase):
     async def update_im(self, payload: UpdateIMInput) -> IMResult:
         body = _build_update_im_payload(payload)
         im = payload.existing_im
-        logger.info(f"Adding working note to {im}")
+        logger.info("Adding working note to %s", im)
         result = await self._adapter.send_post_request("UpdateIm", body)
-        logger.info(f"Working note added to {im}: {payload.working_note[0][:200]}...")
+        logger.info(
+            "Working note added to %s: %s...", im, payload.working_note[0][:200]
+        )
         return IMResult(detail=result, im=im)
 
     async def close_im(self, payload: CloseIMInput) -> IMResult:
         im_id = payload.im_id
         transaction = await self._transaction.get_by_im_id(im_id)
         if transaction is None:
-            logger.error(f"Transaction with ID {im_id} not found while closing IM")
+            logger.error("Transaction with ID %s not found while closing IM", im_id)
             raise FreyaClientError(f"No transaction with ID {im_id}", status_code=404)
 
         body = _build_close_im_payload(payload)
-        logger.info(f"Resolving IM - transaction {transaction.id} - {body}")
+        logger.info("Resolving IM - transaction %s - %s", transaction.id, body)
         return await self._finalize_incident_closure(body, transaction)
 
 
@@ -179,7 +181,7 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
             return
 
         body = _build_create_im_payload(payload)
-        logger.info(f"Transaction {transaction.id} - Creating IM: {body}")
+        logger.info("Transaction %s - Creating IM: %s", transaction_id, body)
         try:
             result = await self._adapter.send_post_request("CreateIM", body)
         except Exception as exc:  # noqa
@@ -191,7 +193,7 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
             return
 
         im = _extract_im_number(result)
-        logger.info(f"IM created: {im} - transaction {transaction_id}")
+        logger.info("IM created: %s - transaction %s", im, transaction_id)
 
         transaction.status = TransactionStatus.SUCCESS
         transaction.status_im = IMStatus.OPEN
@@ -218,7 +220,9 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
 
         payload.im_id = transaction.im_id or ""
         body = _build_close_im_payload(payload)
-        logger.info(f"Resolving IM from zabbix - transaction {transaction.id} - {body}")
+        logger.info(
+            "Resolving IM from zabbix - transaction %s - %s", transaction.id, body
+        )
         template = build_im_closed_template(**zabbix_event_dict, **asdict(payload))
         await self._notifier.notify_via_telegram(template)
         return await self._finalize_incident_closure(body, transaction)

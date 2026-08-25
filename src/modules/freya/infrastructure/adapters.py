@@ -1,5 +1,3 @@
-import json
-
 from src.core.clients.http import HttpClient
 from src.core.exceptions import HttpClientError
 from src.core.logger import get_logger
@@ -67,7 +65,7 @@ class FreyaAdapter(FreyaPort):
 
         result = freya_response.get_result_text() or "Unknown error"
         if freya_response.has_an_error_code():
-            logger.error(f"Auth - status {response.status_code} - {result}")
+            logger.error("Auth - status %s - %s", response.status_code, result)
             raise FreyaClientError(result, 401)
 
         token = AuthToken(result)
@@ -110,12 +108,14 @@ class FreyaAdapter(FreyaPort):
         if freya_response.has_an_error_code():
             result = freya_response.get_result_text() or "Unknown error"
             status_code = 409 if "ya Creado" in result else response.status_code
-            logger.error(f"{err_msg} - {result}")
+            logger.error("%s - %s", err_msg, result)
             raise FreyaClientError(result, status_code)
 
         result = freya_response.results
         if isinstance(result, (list, dict)):
-            logger.warning(f"{err_msg} - Unexpected 'results' format: {freya_response}")
+            logger.warning(
+                "%s - Unexpected 'results' format: %s", err_msg, freya_response
+            )
             raise FreyaClientError(f"Unexpected 'results' format: {result}")
 
         return result
@@ -141,9 +141,7 @@ class Notification(NotificationPort):
         await self._client.close()
 
     async def notify_via_telegram(self, template: dict) -> None:
-        logger.info(
-            f"Sending notification via Telegram: {json.dumps(template, indent=2)}"
-        )
+        logger.info("Sending notification via Telegram: %s", template)
         try:
             await self._client.post("/send/telegram/", json=template)
         except HttpClientError:
@@ -192,7 +190,7 @@ class Troubleshooting(TroubleshootingPort):
             response = await self._client.post(
                 "/parallel-th/exec/ping-um", json=payload
             )
-            logger.info(f"PING UM executed successfully {response}")
+            logger.info("PING UM executed successfully: %s", response)
         except HttpClientError:
             logger.warning("PING UM execution failed")
 

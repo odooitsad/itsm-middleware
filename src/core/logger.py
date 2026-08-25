@@ -1,5 +1,8 @@
+import copy
+import json
 import logging
 import sys
+from typing import ClassVar
 
 from concurrent_log_handler import ConcurrentRotatingFileHandler
 
@@ -10,7 +13,7 @@ settings = get_settings()
 
 
 class ColorFormatter(logging.Formatter):
-    COLORS = {
+    COLORS: ClassVar[dict[int, str]] = {
         logging.DEBUG: "\033[36m",  # Cyan
         logging.INFO: "\033[32m",  # Green
         logging.WARNING: "\033[33m",  # Yellow
@@ -19,7 +22,20 @@ class ColorFormatter(logging.Formatter):
     }
     RESET = "\033[0m"
 
+    @staticmethod
+    def _prettify(arg):
+        if isinstance(arg, (list, tuple, dict)):
+            return json.dumps(arg, indent=2, ensure_ascii=False)
+        return arg
+
     def format(self, record):
+        # Copia el record para no afectar a otros handlers (p. ej. el de archivo)
+        record = copy.copy(record)
+        if isinstance(record.args, tuple):
+            record.args = tuple(self._prettify(arg) for arg in record.args)
+        elif isinstance(record.args, dict) and "%(" not in str(record.msg):
+            record.args = (self._prettify(record.args),)
+
         color = self.COLORS.get(record.levelno, "")
         levelname = f"{color}{record.levelname}{self.RESET}"
 

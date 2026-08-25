@@ -164,7 +164,7 @@ class BmcHelixAdapter(BmcHelixPort):
         """Create an incident in BMC Helix and return the created entry."""
         params = {"fields": "values(Incident Number,Request ID)"}
         bmc_payload = {"values": _to_bmc_payload(payload)}
-        logger.info(f"Creating incident in BMC Helix - payload: {bmc_payload}")
+        logger.info("Creating incident in BMC Helix - payload: %s", bmc_payload)
         try:
             response = await self._client.post(
                 "/arsys/v1/entry/HPD:IncidentInterface_Create",
@@ -182,14 +182,14 @@ class BmcHelixAdapter(BmcHelixPort):
             raise
 
         data = response.json
-        logger.debug(f"Create incident response data: {data}")
+        logger.debug("Create incident response data: %s", data)
         values = data["values"]
         incident_id = values.get("Incident Number", "")
         if not incident_id:
             raise IncidentCreationError(
                 "BMC Helix did not return an incident number after creation."
             )
-        logger.info(f"Incident ID created: {incident_id}")
+        logger.info("Incident ID created: %s", incident_id)
 
         return IncidentResponse(
             incident_number=incident_id,
@@ -226,7 +226,7 @@ class BmcHelixAdapter(BmcHelixPort):
                 status_code=404,
             )
         values = entries[0].get("values", {})
-        logger.debug(f"Get incident response data: {data}")
+        logger.debug("Get incident response data: %s", data)
 
         if not values:
             raise BmcHelixClientError(

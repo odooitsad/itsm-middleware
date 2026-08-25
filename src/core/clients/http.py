@@ -81,7 +81,6 @@ class HttpClient:
 
     async def _request(self, method: str, path: str, **kwargs) -> HttpResponse:
         """Internal method to handle HTTP requests with error handling."""
-        import json
 
         try:
             response = await self._client.request(method, path, **kwargs)
@@ -89,7 +88,7 @@ class HttpClient:
         except httpx.HTTPStatusError as exc:
             http_response = HttpResponse.from_httpx(exc.response)
             json_text = (
-                json.dumps(http_response.json, indent=2, ensure_ascii=False)
+                http_response.json
                 if http_response.json is not None
                 else http_response.text
             )
