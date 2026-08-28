@@ -1,10 +1,14 @@
 from typing import Protocol
 
+from src.modules.freya.domain.entities import FreyaResponse
+
 
 class FreyaPort(Protocol):
     async def stop(self) -> None: ...
     async def fetch_auth_token(self) -> str: ...
-    async def send_post_request(self, endpoint: str, payload: dict) -> str: ...
+    async def send_post_request(
+        self, endpoint: str, payload: dict
+    ) -> FreyaResponse: ...
 
 
 class TroubleshootingPort(Protocol):

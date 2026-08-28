@@ -71,7 +71,7 @@ class FreyaAdapter(FreyaPort):
         token = AuthToken(result)
         return token.authorization_header
 
-    async def send_post_request(self, endpoint: str, payload: dict) -> str:
+    async def send_post_request(self, endpoint: str, payload: dict) -> FreyaResponse:
         """
         Send a POST request to the given Freya endpoint with the provided payload.
 
@@ -85,7 +85,7 @@ class FreyaAdapter(FreyaPort):
         Expected response body is a JSON object with the keys:
         - code: "0" (ok)   | "-1" (error),
         - desc: "Ok"       | "Error",
-        - results: "result" | "Error Message"
+        - results: "result" | list["result"] | "Error Message"
         """
         token = await self.fetch_auth_token()
         headers = {"Authorization": token}
@@ -111,14 +111,7 @@ class FreyaAdapter(FreyaPort):
             logger.error("%s - %s", err_msg, result)
             raise FreyaClientError(result, status_code)
 
-        result = freya_response.results
-        if isinstance(result, (list, dict)):
-            logger.warning(
-                "%s - Unexpected 'results' format: %s", err_msg, freya_response
-            )
-            raise FreyaClientError(f"Unexpected 'results' format: {result}")
-
-        return result
+        return freya_response
 
 
 class Notification(NotificationPort):

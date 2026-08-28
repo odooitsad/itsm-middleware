@@ -94,10 +94,11 @@ class FreyaBaseUseCase:
         self, body: dict, transaction: Transaction
     ) -> IMResult:
         im_id = body["IdIm"]
-        result = await self._adapter.send_post_request("ResolvedIM", body)
+        response = await self._adapter.send_post_request("ResolvedIM", body)
+        result = response.validate_results_type(str)
+        logger.info("%s resolved", im_id)
         transaction.status_im = IMStatus.CLOSED
         await self._transaction.update(transaction)
-        logger.info("%s resolved", im_id)
         return IMResult(detail=result, im=im_id)
 
 
@@ -111,14 +112,15 @@ class FreyaUseCase(FreyaBaseUseCase):
         )
         logger.info("Transaction %s - Creating IM: %s", transaction.id, body)
         try:
-            result = await self._adapter.send_post_request("CreateIM", body)
+            response = await self._adapter.send_post_request("CreateIM", body)
+            results = response.validate_results_type(str)
         except Exception as exc:
             transaction.status = TransactionStatus.ERROR
             transaction.response = {"error": str(exc)}
             await self._transaction.update(transaction)
             raise
 
-        im = _extract_im_number(result)
+        im = _extract_im_number(results)
         logger.info("IM created: %s - CI: %s", im, payload.affected_ci)
         im_result = IMResult(detail="Incident created successfully", im=im)
 
@@ -133,7 +135,8 @@ class FreyaUseCase(FreyaBaseUseCase):
         body = _build_update_im_payload(payload)
         im = payload.existing_im
         logger.info("Adding working note to %s", im)
-        result = await self._adapter.send_post_request("UpdateIm", body)
+        response = await self._adapter.send_post_request("UpdateIm", body)
+        result = response.validate_results_type(str)
         logger.info(
             "Working note added to %s: %s...", im, payload.working_note[0][:200]
         )
@@ -183,7 +186,8 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
         body = _build_create_im_payload(payload)
         logger.info("Transaction %s - Creating IM: %s", transaction_id, body)
         try:
-            result = await self._adapter.send_post_request("CreateIM", body)
+            response = await self._adapter.send_post_request("CreateIM", body)
+            result = response.validate_results_type(str)
         except Exception as exc:  # noqa
             transaction.status = TransactionStatus.ERROR
             transaction.response = {"error": str(exc)}
