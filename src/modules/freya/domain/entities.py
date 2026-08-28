@@ -1,8 +1,14 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import TypeVar
 
+from src.core.logger import get_logger
 from src.modules.freya.domain.exceptions import FreyaClientError
+
+_ResultT = TypeVar("_ResultT", str, list, dict)
+
+logger = get_logger(__name__)
 
 
 @dataclass
@@ -52,10 +58,17 @@ class IMResult:
 
 
 @dataclass
+class OpenIncident:
+    im_id: str
+    title: str
+    opened_at: datetime
+
+
+@dataclass
 class FreyaResponse:
     code: str
     desc: str
-    results: str | list[str] | dict[str, str]
+    results: str | list[str] | list[dict[str, str]] | dict[str, str]
 
     def __post_init__(self) -> None:
         if not isinstance(self.results, (str, dict, list)):
@@ -63,6 +76,19 @@ class FreyaResponse:
                 "Unexpected 'results' type in Freya response: "
                 f"{type(self.results).__name__}"
             )
+
+    def validate_results_type(
+        self, expected_type: type[_ResultT], status_code: int = 409
+    ) -> _ResultT:
+        """Assert `results` matches `expected_type` and return it narrowed to that type."""
+        if not isinstance(self.results, expected_type):
+            logger.warning(
+                "Unexpected 'results' format in Freya response: %s", self.results
+            )
+            raise FreyaClientError(
+                f"Unexpected 'result' from Freya: {self.results}", status_code
+            )
+        return self.results
 
     def has_an_error_code(self) -> bool:
         """
