@@ -49,7 +49,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     try:
         await db.connect()
         app.state.db = db
-        logger.info("Database connection pool established")
 
         async with (
             bmc_helix_lifespan(app),
@@ -62,7 +61,6 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         raise
     finally:
         await db.disconnect()
-        logger.info("Database connection pool closed")
 
 
 app = FastAPI(

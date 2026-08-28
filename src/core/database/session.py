@@ -8,6 +8,10 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from src.core.logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class DatabaseAdapter:
     """
@@ -41,6 +45,7 @@ class DatabaseAdapter:
         self._engine = self._build_engine()
         async with self._engine.connect() as conn:
             await conn.execute(text("SELECT 1"))
+            logger.info("Database connection pool established")
 
         self._session_factory = async_sessionmaker(
             bind=self._engine,
@@ -55,6 +60,7 @@ class DatabaseAdapter:
             await self._engine.dispose()
             self._engine = None
             self._session_factory = None
+            logger.info("Database connection pool closed")
 
     async def session(self) -> AsyncGenerator[AsyncSession, None]:
         if self._session_factory is None:
