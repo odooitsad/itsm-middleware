@@ -6,10 +6,16 @@ from src.modules.freya.api.schemas import (
     CreateIMRequest,
     ImId,
     IMResponse,
+    OpenIncidentResponse,
     UpdateIMRequest,
 )
 
 router = APIRouter()
+
+
+@router.get("/by-ci/{ci}", response_model=list[OpenIncidentResponse])
+async def get_incidents_by_ci(ci: str, use_case: FreyaUseCaseDep):
+    return await use_case.get_im_by_ci(ci)
 
 
 @router.post("", response_model=IMResponse, status_code=status.HTTP_201_CREATED)

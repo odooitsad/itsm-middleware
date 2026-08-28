@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, ConfigDict, Field, field_validator
 
 from src.core.base_schemas import ZabbixBase, ZabbixEventUrgency
 from src.core.utils.date_utils import add_settings_timezone, now_with_settings_timezone
@@ -125,6 +125,14 @@ class CloseIMRequest(BaseModel):
 class IMResponse(BaseModel):
     detail: str
     im: str | None = Field(None, serialization_alias="incident_id")
+
+
+class OpenIncidentResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    im_id: str = Field(serialization_alias="incident_id")
+    title: str
+    opened_at: datetime
 
 
 ZABBIX_URGENCY_TO_FREYA_URGENCY: dict[ZabbixEventUrgency, str] = {

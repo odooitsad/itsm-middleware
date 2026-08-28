@@ -1,4 +1,6 @@
 from dataclasses import asdict
+from datetime import datetime
+from typing import cast
 
 from src.core.logger import get_logger
 from src.modules.freya.application.notification_templates import (
@@ -11,6 +13,7 @@ from src.modules.freya.domain.entities import (
     CreateIMInput,
     IMResult,
     IMStatus,
+    OpenIncident,
     Transaction,
     TransactionStatus,
     UpdateIMInput,
@@ -103,6 +106,28 @@ class FreyaBaseUseCase:
 
 
 class FreyaUseCase(FreyaBaseUseCase):
+    async def get_im_by_ci(self, ci: str) -> list[OpenIncident]:
+        payload = {"CI": ci}
+        response = await self._adapter.send_post_request("GetIm", payload)
+        results = response.results
+        if isinstance(results, str):
+            logger.info("GetIm(%s): %s", ci, results)
+            return []
+
+        response.validate_results_type(list)
+
+        results = cast(list[dict], results)
+        incidents = [
+            OpenIncident(
+                im_id=item["IDIM"],
+                title=item["Titulo"],
+                opened_at=datetime.fromisoformat(item["FechaApertura"]),
+            )
+            for item in results
+        ]
+        incidents.sort(key=lambda incident: incident.opened_at, reverse=True)
+        return incidents
+
     async def create_im(
         self, payload: CreateIMInput, host_id: int | None = None
     ) -> IMResult:
