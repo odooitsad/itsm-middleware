@@ -117,6 +117,7 @@ class FreyaUseCase(FreyaBaseUseCase):
         response.validate_results_type(list)
 
         results = cast(list[dict], results)
+        logger.info("Incidents open for CI %s: %s", ci, results)
         incidents = [
             OpenIncident(
                 im_id=item["IDIM"],
