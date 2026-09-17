@@ -120,9 +120,9 @@ class FreyaUseCase(FreyaBaseUseCase):
         logger.info("Incidents open for CI %s: %s", ci, results)
         incidents = [
             OpenIncident(
-                im_id=item["IDIM"],
-                title=item["Titulo"],
-                opened_at=datetime.fromisoformat(item["FechaApertura"]),
+                im_id=item["IncidentID"],
+                title=item["Title"],
+                opened_at=datetime.fromisoformat(item["OpenTime"]),
             )
             for item in results
         ]
