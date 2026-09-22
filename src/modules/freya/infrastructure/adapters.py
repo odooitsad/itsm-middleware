@@ -157,7 +157,7 @@ class Troubleshooting(TroubleshootingPort):
 
     @classmethod
     def build(cls, base_url: str, timeout: float, token: str) -> "Troubleshooting":
-        headers = {"X-Access-Token": token}
+        headers = {"X-API-Key": token}
         client = HttpClient(
             base_url=base_url, timeout=timeout, headers=headers, verify=False
         )
@@ -169,23 +169,24 @@ class Troubleshooting(TroubleshootingPort):
     async def execute(self, im_id: str, ip_wan: str):
         payload = {"im": im_id, "ip_wan": ip_wan}
         logger.info(f"Triggering T-shoot for {ip_wan} - IM: {im_id}")
+
+        logger.debug("Headers: %s", self._client._client.headers)
+
         try:
-            response = await self._client.post("/parallel-th/exec", json=payload)
+            response = await self._client.post("/troubleshooting/run", json=payload)
             task_id = response.json.get("task_id")
-            logger.info(f"T-shoot executed successfully {task_id}")
+            logger.info(f"Troubleshooting executed successfully {task_id}")
         except HttpClientError:
-            logger.warning("T-shoot execution failed")
+            logger.warning("Troubleshooting execution failed")
 
     async def ping_last_mile(self, im_id: str, service_code: str):
         payload = {"im": im_id, "hostname": service_code}
         logger.info(f"Running last mile PING for Service: {service_code} - IM: {im_id}")
         try:
-            response = await self._client.post(
-                "/parallel-th/exec/ping-um", json=payload
-            )
-            logger.info("PING UM executed successfully: %s", response)
+            response = await self._client.post("/troubleshooting/ping-lm", json=payload)
+            logger.info("PING LM executed successfully: %s", response)
         except HttpClientError:
-            logger.warning("PING UM execution failed")
+            logger.warning("PING LM execution failed")
 
 
 class NullTroubleshooting(TroubleshootingPort):
