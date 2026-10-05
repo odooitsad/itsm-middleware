@@ -93,17 +93,6 @@ class FreyaBaseUseCase:
         self._transaction = repository
         self._troubleshooting = troubleshooting
 
-    async def _finalize_incident_closure(
-        self, body: dict, transaction: Transaction
-    ) -> IMResult:
-        im_id = body["IdIm"]
-        response = await self._adapter.send_post_request("ResolvedIM", body)
-        result = response.validate_results_type(str)
-        logger.info("%s resolved", im_id)
-        transaction.status_im = IMStatus.CLOSED
-        await self._transaction.update(transaction)
-        return IMResult(detail=result, im=im_id)
-
 
 class FreyaUseCase(FreyaBaseUseCase):
     async def get_im_by_ci(self, ci: str) -> list[OpenIncident]:
@@ -177,7 +166,12 @@ class FreyaUseCase(FreyaBaseUseCase):
 
         body = _build_close_im_payload(payload)
         logger.info("Resolving IM - transaction %s - %s", transaction.id, body)
-        return await self._finalize_incident_closure(body, transaction)
+        response = await self._adapter.send_post_request("ResolvedIM", body)
+        result = response.validate_results_type(str)
+        logger.info("%s resolved", im_id)
+        transaction.status_im = IMStatus.CLOSED
+        await self._transaction.update(transaction)
+        return IMResult(detail=result, im=im_id)
 
 
 class FreyaFromZabbixUseCase(FreyaBaseUseCase):
@@ -248,11 +242,24 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
             logger.error(msg)
             raise FreyaClientError(msg, status_code=404)
 
-        payload.im_id = transaction.im_id or ""
+        im_id = transaction.im_id
+        if not im_id:
+            msg = f"Transaction {transaction_id} has no associated IM ID"
+            logger.error(msg)
+            raise FreyaClientError(msg)
+
+        payload.im_id = im_id
         body = _build_close_im_payload(payload)
         logger.info(
             "Resolving IM from zabbix - transaction %s - %s", transaction.id, body
         )
+        response = await self._adapter.send_post_request("ResolvedIM", body)
+        result = response.validate_results_type(str)
+        logger.info("%s resolved", im_id)
+
+        transaction.status_im = IMStatus.CLOSED
+        await self._transaction.update(transaction)
+
         template = build_im_closed_template(**zabbix_event_dict, **asdict(payload))
         await self._notifier.notify_via_telegram(template)
-        return await self._finalize_incident_closure(body, transaction)
+        return IMResult(detail=result, im=im_id)

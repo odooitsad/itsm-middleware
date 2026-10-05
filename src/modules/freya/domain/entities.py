@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TypeVar
 
 from src.core.logger import get_logger
@@ -127,7 +127,7 @@ class FreyaResponse:
         return self.results
 
 
-class TransactionStatus(str, Enum):
+class TransactionStatus(StrEnum):
     PENDING = "En proceso"
     SUCCESS = "Procesado"
     ERROR = "Procesado con error"
