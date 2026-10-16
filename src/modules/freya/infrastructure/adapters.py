@@ -168,20 +168,33 @@ class Troubleshooting(TroubleshootingPort):
 
     async def execute(self, im_id: str, ip_wan: str):
         payload = {"im": im_id, "ip_wan": ip_wan}
-        logger.info(f"Triggering T-shoot for {ip_wan} - IM: {im_id}")
+        logger.info("Triggering T-shoot for %s - IM: %s", ip_wan, im_id)
 
         logger.debug("Headers: %s", self._client._client.headers)
 
         try:
             response = await self._client.post("/troubleshooting/run", json=payload)
             task_id = response.json.get("task_id")
-            logger.info(f"Troubleshooting executed successfully {task_id}")
+            logger.info("Troubleshooting executed successfully: %s", task_id)
         except HttpClientError:
             logger.warning("Troubleshooting execution failed")
 
+    async def backup_links(self, im_id: str, ip_wan: dict[str, str]):
+        payload = {"im": im_id, "ip_wan": ip_wan}
+        logger.info("Triggering backup links T-shoot: %s", payload)
+        try:
+            response = await self._client.post(
+                "/troubleshooting/run-backup-links", json=payload
+            )
+            logger.info("Backup links executed successfully: %s", response.json)
+        except HttpClientError:
+            logger.warning("Backup links execution failed")
+
     async def ping_last_mile(self, im_id: str, service_code: str):
         payload = {"im": im_id, "hostname": service_code}
-        logger.info(f"Running last mile PING for Service: {service_code} - IM: {im_id}")
+        logger.info(
+            "Running last mile PING for Service: %s - IM: %s", service_code, im_id
+        )
         try:
             response = await self._client.post("/troubleshooting/ping-lm", json=payload)
             logger.info("PING LM executed successfully: %s", response)
@@ -196,6 +209,9 @@ class NullTroubleshooting(TroubleshootingPort):
         pass
 
     async def execute(self, im_id: str, ip_wan: str):
+        pass
+
+    async def backup_links(self, im_id: str, ip_wan: dict):
         pass
 
     async def ping_last_mile(self, im_id: str, service_code: str):

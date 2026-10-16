@@ -97,6 +97,7 @@ class FreyaBaseUseCase:
 class FreyaUseCase(FreyaBaseUseCase):
     async def get_im_by_ci(self, ci: str) -> list[OpenIncident]:
         payload = {"CI": ci}
+        logger.info("Fetching open incidents for CI %s", ci)
         response = await self._adapter.send_post_request("GetIm", payload)
         results = response.results
         if isinstance(results, str):
@@ -225,13 +226,23 @@ class FreyaFromZabbixUseCase(FreyaBaseUseCase):
         transaction.response = {"detail": "IM created successfully", "im": im}
         await self._transaction.update(transaction)
 
-        if zabbix_event_dict.get("run_tshoot"):
-            await self._troubleshooting.execute(
-                im_id=im, ip_wan=zabbix_event_dict["ip_wan"]
-            )
-
         template = build_im_created_success_template(**zabbix_event_dict, im_id=im)
         await self._notifier.notify_via_telegram(template)
+
+        if zabbix_event_dict.get("run_tshoot"):
+            ip_wan: dict[str, str] = zabbix_event_dict.get("ip_wan")
+            primary = ip_wan.get("primary")
+            if not primary:
+                logger.warning(
+                    "T-shoot requested but no primary IP provided in event: %s",
+                    zabbix_event_dict,
+                )
+                return
+            await self._troubleshooting.execute(
+                im_id=im, ip_wan=primary
+            )  # ? Or secondary?
+            if ip_wan.get("secondary"):
+                await self._troubleshooting.backup_links(im_id=im, ip_wan=ip_wan)
 
     async def close_im_from_zabbix(
         self, payload: CloseIMInput, transaction_id: int, zabbix_event_dict

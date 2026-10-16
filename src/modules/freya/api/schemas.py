@@ -143,13 +143,18 @@ ZABBIX_URGENCY_TO_FREYA_URGENCY: dict[ZabbixEventUrgency, str] = {
 }
 
 
+class IPWan(BaseModel):
+    primary: str = ""
+    secondary: str = ""
+
+
 class ZabbixEvent(ZabbixBase):
     affected_ci: str | None = Field(
         None, description="Affected service code", examples=["GRH0931"]
     )
     ci_is_operational: bool | None = True
     city: str = Field("Not defined")
-    ip_wan: str = Field(description="T-shoot IP WAN")
+    ip_wan: IPWan = Field(description="T-shoot IP WAN")
     provider: str = Field("Not defined", description="Secondary link")
     run_tshoot: bool = False
     service_type: str = Field("Not defined", examples=["Inhouse", "ATM"])
