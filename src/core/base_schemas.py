@@ -37,6 +37,6 @@ class ZabbixBase(BaseModel):
     )
     title: str = Field(
         examples=["DATASMART//GRH0931//memoria//supero 70%"],
-        max_length=100,
+        max_length=250,
     )
     urgency: ZabbixEventUrgency = ZabbixEventUrgency.LOW

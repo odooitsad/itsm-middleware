@@ -50,7 +50,7 @@ class CreateIMRequest(BaseModel):
     origin: str = Field("3", description="3: event created from SM")
     sub_category: str = Field("failure")
     title: str = Field(
-        max_length=150, examples=["DATASMART//GRH3658//memoria//supero 70%"]
+        max_length=250, examples=["DATASMART//GRH3658//memoria//supero 70%"]
     )
     urgency: Literal["1", "2", "3"] = Field(
         description="Urgency levels: '1' - High, '2' - Medium, '3' - Low"
